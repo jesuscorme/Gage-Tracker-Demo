@@ -31,3 +31,29 @@ Motor: `backend/app/engine/` (versión del motor **1.0.0**). Independiente de la
 - Los criterios de aceptación **no** están en el motor: los define y aprueba cada organización (versionados, segundo aprobador). Sin criterios aprobados la decisión es `NO_CRITERIA`; si falta un indicador requerido, `INCONCLUSIVE`.
 - Un método con estado distinto de VALIDADO nunca produce una decisión de aceptación (`NO_CRITERIA`).
 - Varianzas negativas estimadas se truncan a cero y se informa en `warnings`.
+
+## Auditoría técnica previa a la liberación (bloque 4, 2026-10-30)
+
+Para cada método se revisaron diseño, fórmulas, entradas, salidas, datasets de referencia, resultados intermedios, reproducibilidad, gráficas, criterios y versionado:
+- Las fórmulas coinciden con la documentación de cada método.
+- La validación de diseño rechaza datos faltantes, duplicados e inválidos.
+- La salida completa (indicadores, tablas, gráficas e intermedios) se congeló en `tests/msa_golden.json` y la compara `test_engine_regression.py`.
+- El versionado se comprobó: algoritmo 1.0.0, huella de los datos, ejecuciones inmutables y endpoint `verify`.
+
+No se modificó ningún resultado histórico ni criterio de aceptación.
+
+| Metodología (encargo) | Código | Implementada | Validada | Lista para producción |
+|---|---|---|---|---|
+| Gage R&R Crossed | `GRR_CROSSED_AR` / `GRR_CROSSED_ANOVA` | Sí | Sí: ejemplo AIAG publicado + statsmodels | Sí, sujeta a UAT |
+| Gage R&R Nested | `GRR_NESTED_ANOVA` | Sí | Sí: cálculo a mano + statsmodels (8 diseños) | Sí, sujeta a UAT |
+| ANOVA | `GRR_CROSSED_ANOVA` | Sí | Sí: tabla de SS AIAG + 12 diseños aleatorios | Sí, sujeta a UAT |
+| Average & Range | `GRR_CROSSED_AR` | Sí | Sí: todos los intermedios AIAG reproducidos | Sí, sujeta a UAT |
+| Attribute Agreement | `ATTRIBUTE_AGREEMENT` | Sí | Sí: ejemplo de Fleiss publicado + statsmodels + conteo a mano | Sí, sujeta a UAT. La variante de detección de señales de AIAG no está implementada |
+| Bias | `BIAS` | Sí | Sí: ejemplo AIAG + scipy | Sí, sujeta a UAT |
+| Linearity | `LINEARITY` | Sí | Sí: ejemplo AIAG + scipy | Sí, sujeta a UAT |
+| Stability | `STABILITY` | Sí | Sí, **sin dataset publicado**: constantes del manual SPC y cálculo a mano | **Condicional**: confirmar con un caso de referencia del cliente durante UAT |
+| Type 1 | `TYPE1` | Sí | Sí, **sin dataset publicado**: fórmulas de Bosch Booklet 10 a mano | **Condicional**: confirmar con un caso de referencia (p. ej. software certificado del cliente) durante UAT |
+
+Observaciones:
+- Gráficas: se generan para los 8 métodos; la representación en pantalla se verificó en el navegador para GRR (E2E 3), y el PDF de los 8 métodos en español e inglés en `test_engine_regression::test_msa_pdf_report_renders_for_every_method` (16 casos).
+- Criterios: hay plantillas para todas las familias. Siempre los aprueba un segundo usuario. Sin criterios no hay decisión.

@@ -53,11 +53,13 @@ def get_current_user(
         return user
     if creds is None or creds.scheme.lower() != "bearer":
         raise AuthenticationError("Authentication required")
-    user_id = decode_access_token(creds.credentials)
-    if user_id is None:
+    decoded = decode_access_token(creds.credentials)
+    if decoded is None:
         raise AuthenticationError("Invalid or expired token", code="invalid_token")
+    user_id, version = decoded
     user = db.get(User, user_id)
-    if user is None or not user.is_active:
+    # A token issued before a logout-all / password change has an old version.
+    if user is None or not user.is_active or version != user.token_version:
         raise AuthenticationError("Invalid or expired token", code="invalid_token")
     return user
 

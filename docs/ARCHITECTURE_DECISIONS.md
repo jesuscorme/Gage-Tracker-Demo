@@ -152,3 +152,19 @@ Eventos en la misma transacción del cambio (deduplicación por clave). Entrega 
 ## ADR-028 · Clientes API como cuentas de servicio; conectores por adaptador
 
 Una llave API resuelve a un usuario de servicio con membresía: todas las reglas de permisos, plantas, tenant y auditoría se aplican sin código especial. Los dispositivos se integran por adaptadores; el servidor re-interpreta la trama cruda. No se declara compatibilidad con fabricantes sin adaptador probado.
+
+## ADR-029 · Tablero y reportes sobre consultas vivas y conciliadas
+
+El tablero y los reportes consultan las tablas operativas en cada petición (sin agregados precalculados). Todas las cifras de instrumentos parten de la misma población filtrada, de modo que las particiones (por estado, tipo, planta) suman el total y coinciden con los listados; las pruebas lo verifican. Si en el futuro se requiere caché, debe conservar esta conciliación.
+
+## ADR-030 · Revocación de sesiones por versión de token
+
+En lugar de una lista de tokens revocados, cada usuario tiene `token_version` incluido en el JWT. Cerrar sesión en todos los dispositivos, cambiar o restablecer la contraseña incrementa la versión e invalida todo lo emitido. Restablecimiento por enlace de un solo uso emitido por un administrador (sin SMTP todavía).
+
+## ADR-031 · Worker dedicado en producción
+
+Los trabajos de fondo (webhooks, escalamientos, vencidos) son idempotentes y corren en `python -m app.worker`; la API se despliega con `SCHEDULER_ENABLED=false`. El hilo dentro de la API queda para instalaciones de un solo proceso.
+
+## ADR-032 · Actualización de dependencias por seguridad
+
+FastAPI 0.115 → 0.162 (starlette 1.10) para cerrar avisos publicados; se aceptó el salto porque las 234 pruebas de backend y las 43 E2E pasan sin cambios de código. `postcss` se fuerza con `overrides` dentro de Next 15 hasta migrar a Next 16. La auditoría de dependencias forma parte del CI.

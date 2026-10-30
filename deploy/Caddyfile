@@ -1,0 +1,23 @@
+# HTTPS reverse proxy. Public domain: automatic Let's Encrypt certificates.
+# Private network without public DNS: set GT_TLS=internal in deploy/.env (Caddy internal CA;
+# install its root certificate on client machines) or mount your corporate certificate.
+{$GT_DOMAIN} {
+	tls {$GT_TLS}
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+	# Health and API go straight to the API; everything else to the web front end.
+	handle /health/* {
+		reverse_proxy api:8000
+	}
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}

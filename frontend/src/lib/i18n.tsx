@@ -3,12 +3,13 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { en, es, format, type MessageKey } from "./messages";
 import { enB3, esB3 } from "./messages-b3";
+import { enB4, esB4 } from "./messages-b4";
 import { enModules, esModules } from "./messages-modules";
 
 export type Lang = "es" | "en";
 const DICTS: Record<Lang, Record<MessageKey, string>> = {
-  es: { ...es, ...esModules, ...esB3 },
-  en: { ...en, ...enModules, ...enB3 },
+  es: { ...es, ...esModules, ...esB3, ...esB4 },
+  en: { ...en, ...enModules, ...enB3, ...enB4 },
 };
 const KEY = "gt.lang";
 

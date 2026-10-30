@@ -80,7 +80,8 @@ class WebhookEndpoint(Base):
     organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="RESTRICT"), index=True)
     name: Mapped[str] = mapped_column(String(120))
     url: Mapped[str] = mapped_column(String(500))
-    secret: Mapped[str] = mapped_column(String(100))
+    # Encrypted at rest (app.core.crypto); shown to the user once at creation.
+    secret: Mapped[str] = mapped_column(String(300))
     event_types: Mapped[list[str]] = mapped_column(JSONB)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))

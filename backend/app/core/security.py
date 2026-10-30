@@ -23,7 +23,8 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def create_access_token(user_id: uuid.UUID) -> tuple[str, int]:
+def create_access_token(user_id: uuid.UUID, version: int = 0) -> tuple[str, int]:
+    """``version`` is the user's token version: incrementing it revokes every issued token."""
     settings = get_settings()
     ttl = settings.access_token_ttl_minutes * 60
     now = datetime.now(UTC)
@@ -32,16 +33,17 @@ def create_access_token(user_id: uuid.UUID) -> tuple[str, int]:
         "iat": now,
         "exp": now + timedelta(seconds=ttl),
         "typ": "access",
+        "ver": version,
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm), ttl
 
 
-def decode_access_token(token: str) -> uuid.UUID | None:
+def decode_access_token(token: str) -> tuple[uuid.UUID, int] | None:
     settings = get_settings()
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         if payload.get("typ") != "access":
             return None
-        return uuid.UUID(payload["sub"])
-    except (jwt.PyJWTError, KeyError, ValueError):
+        return uuid.UUID(payload["sub"]), int(payload.get("ver", 0))
+    except (jwt.PyJWTError, KeyError, ValueError, TypeError):
         return None

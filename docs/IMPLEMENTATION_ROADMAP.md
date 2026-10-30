@@ -2,31 +2,28 @@
 
 Avance medido por funcionalidad probada y utilizable, no por volumen de código.
 
-## Avance global estimado: **≈ 72 %** (bloque 3, 2026-10-30)
+## Avance global estimado: **≈ 84 %** del alcance total (bloque 4, 2026-10-30)
+
+Medido por funcionalidad probada. Ver la matriz del plan maestro y `PROGRESS_REPORT_04.md` §2.
 
 | Fase | Peso | Estado | Avance |
 |---|---|---|---|
 | 0 · Descubrimiento | 2 % | Completa | 100 % |
-| 1 · Fundaciones | 10 % | Completa con pendientes no bloqueantes | 90 % |
+| 1 · Fundaciones | 10 % | Completa salvo OIDC, MFA y RLS | 92 % |
 | 2 · Gage Management | 8 % | Completa salvo unicidad configurable | 95 % |
-| 3 · Calibration Management | 12 % | Flujo integral + eventos + matriz de aprobación | 86 % |
+| 3 · Calibration | 12 % | Completa salvo correo | 87 % |
 | 4 · Standards + Competency | 8 % | Funcional | 85 % |
-| 5 · Laboratory Operations | 10 % | Funcional | 80 % |
-| 6 · MSA | 12 % | 8 métodos validados, criterios, versionado, reportes | 85 % |
-| 7 · OOT & Impact | 8 % | Detección, restricción, análisis, acciones, cierre | 85 % |
-| 8 · Integrations | 8 % | API/llaves, idempotencia, webhooks, importaciones, conectores (sin fabricantes) | 70 % |
-| 9 · Configuration & Compliance | 8 % | Campos, formularios, workflows, matrices, reglas, compliance | 75 % |
-| 10 · Dashboard/reportes | 5 % | Parcial implícito (tableros por módulo) | 0 % |
-| 11–12 · Producción y liberación | 9 % | No iniciadas | 0 % |
+| 5 · Laboratory | 10 % | Funcional + reportes de tiempos y capacidad | 82 % |
+| 6 · MSA | 12 % | 8 métodos validados, PDF ES/EN, regresión *golden* | 90 % |
+| 7 · OOT | 8 % | Completa salvo plantilla de notificación | 87 % |
+| 8 · Integrations | 8 % | Sin adaptadores de fabricante ni ERP | 70 % |
+| 9 · Configuration & Compliance | 8 % | Sin editor visual ni expediente PDF | 78 % |
+| 10 · Dashboard / reportes | 5 % | Tablero ejecutivo + 22 reportes | 95 % |
+| 11–12 · Producción y liberación | 9 % | Seguridad, respaldo probado, rendimiento, docs, demo, UAT preparado; Docker y CI sin ejecutar; UAT pendiente | 55 % |
 
-## Pendientes para cerrar las Fases 2–9
+## Pendientes para la liberación productiva
 
-1. Correo (notificaciones y escalamientos); worker dedicado para el scheduler.
-2. Adaptadores de fabricantes probados en sitio; integraciones ERP.
-3. Reporte MSA en español; plan MSA por característica; método de detección de señales (atributos).
-4. Expediente de auditoría en PDF; formularios configurados aplicados al diseño de pantallas; editor visual de workflows.
-5. Seguridad: OIDC, rate limiting por usuario y cliente API, cifrado de secretos de webhook, anti-SSRF con resolución DNS, almacenamiento S3.
-
-## Siguiente bloque (planificado por el propietario)
-
-Dashboard ejecutivo, experiencia de usuario, pruebas integrales, despliegue híbrido y liberación comercial.
+1. Ejecutar el despliegue con Docker (`DEPLOYMENT_PRIVATE.md` §6) y el pipeline de CI.
+2. UAT con usuarios (`UAT.md`).
+3. Revisión de seguridad externa; MFA/OIDC; límite por IP; anti-SSRF con DNS.
+4. Almacenamiento de objetos (S3/Blob), SMTP, adaptadores de fabricantes y ERP según prioridad comercial.

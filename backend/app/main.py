@@ -22,6 +22,7 @@ from app.modules.laboratory.router import router as laboratory_router
 from app.modules.msa.router import router as msa_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.oot.router import router as oot_router
+from app.modules.reports.router import router as reports_router
 from app.modules.organizations.router import router as organizations_router
 from app.modules.standards.router import router as standards_router
 
@@ -46,7 +47,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title=settings.app_name,
-        version="0.8.0",
+        version="1.0.0rc1",
         lifespan=lifespan,
         docs_url="/api/docs" if settings.app_env != "production" else None,
         openapi_url="/api/openapi.json" if settings.app_env != "production" else None,
@@ -68,7 +69,7 @@ def create_app() -> FastAPI:
     for r in (auth_router, users_router, organizations_router, audit_router, documents_router, gages_router,
               dashboard_router, standards_router, competency_router, calibration_router, laboratory_router,
               notifications_router, configuration_router, msa_router, oot_router, integrations_router,
-              compliance_router):
+              compliance_router, reports_router):
         api.include_router(r)
     app.include_router(health_router)
     app.include_router(api)

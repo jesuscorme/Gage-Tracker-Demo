@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     # Plain-HTTP webhook targets are only accepted outside production.
     webhook_allow_http: bool = True
     webhook_timeout_seconds: float = Field(default=10, gt=0, le=60)
+    # Fernet key (urlsafe base64, 32 bytes) for secrets at rest. Required in production.
+    secret_encryption_key: str | None = None
+    # Brute-force protection: failed logins per account within the window before lockout.
+    login_max_failures: int = Field(default=5, ge=3, le=50)
+    login_lockout_minutes: int = Field(default=15, ge=1, le=1440)
+    password_reset_ttl_minutes: int = Field(default=60, ge=5, le=1440)
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -57,6 +63,8 @@ class Settings(BaseSettings):
         if self.app_env == "production":
             if self.jwt_secret == DEV_JWT_SECRET or len(self.jwt_secret) < 32:
                 raise ValueError("JWT_SECRET must be set to a strong value (>= 32 chars) in production")
+            if not self.secret_encryption_key:
+                raise ValueError("SECRET_ENCRYPTION_KEY must be set in production")
             if self.bcrypt_rounds < 12:
                 raise ValueError("BCRYPT_ROUNDS must be >= 12 in production")
         return self

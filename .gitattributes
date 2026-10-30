@@ -1,0 +1,7 @@
+# Files executed or parsed on Linux servers must keep LF line endings.
+*.sh text eol=lf
+deploy/Caddyfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+backend/Dockerfile text eol=lf
+frontend/Dockerfile text eol=lf

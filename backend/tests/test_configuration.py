@@ -8,7 +8,6 @@ from sqlalchemy import text
 
 from app.modules.configuration import workflow
 from app.modules.msa.service import DEFAULT_WORKFLOW
-from tests.conftest import today
 from tests.msa_reference import grr_observations
 from tests.test_calibration import lab  # noqa: F401
 from tests.test_msa import create, msa  # noqa: F401

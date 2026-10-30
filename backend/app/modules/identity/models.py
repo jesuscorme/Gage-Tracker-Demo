@@ -6,6 +6,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Integer,
     String,
     Table,
     UniqueConstraint,
@@ -28,6 +29,8 @@ class User(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     preferred_language: Mapped[str] = mapped_column(String(5), default="es", server_default="es")
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Incremented on logout-all and password change/reset: invalidates issued tokens.
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
     memberships: Mapped[list["OrganizationMembership"]] = relationship(back_populates="user")
 
@@ -93,3 +96,20 @@ class OrganizationMembership(TimestampMixin, Base):
     organization: Mapped[Organization] = relationship(lazy="joined")
     role: Mapped[Role] = relationship(lazy="joined")
     plants: Mapped[list[Plant]] = relationship(secondary=plant_memberships, lazy="selectin")
+
+
+class PasswordResetToken(Base):
+    """One-time password reset issued by an administrator (no e-mail delivery yet).
+
+    Only the SHA-256 of the token is stored; it expires and can be used once.
+    """
+
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("clock_timestamp()"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

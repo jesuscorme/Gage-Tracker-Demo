@@ -4,7 +4,7 @@ Plataforma modular y multi-tenant para la gestión de instrumentos de medición 
 
 - **Backend:** Python 3.12 · FastAPI · SQLAlchemy 2 · Alembic · PostgreSQL 16
 - **Frontend:** Next.js 15 · React 19 · TypeScript · Tailwind CSS 4
-- **Estado (≈ 72 %):** Plataforma, Gage Management, Calibration, Standards, Competency, Laboratory, MSA (motor estadístico validado), OOT & Impact, Integraciones, Configuración y Compliance. Ver [docs/MASTER_IMPLEMENTATION_PLAN.md](docs/MASTER_IMPLEMENTATION_PLAN.md), [docs/PROGRESS_REPORT_03.md](docs/PROGRESS_REPORT_03.md), [docs/msa/](docs/msa/README.md) y [docs/integrations/](docs/integrations/README.md).
+- **Versión `1.0.0-rc.1` (Release Candidate, ≈ 84 % del alcance; no liberada a producción).** Todos los módulos conectados: plataforma, instrumentos, calibración, patrones, competencias, laboratorio, MSA (motor validado), OOT, integraciones, configuración, cumplimiento, tablero ejecutivo y reportes. Estado y pendientes: [docs/MASTER_IMPLEMENTATION_PLAN.md](docs/MASTER_IMPLEMENTATION_PLAN.md) · cierre: [docs/PROGRESS_REPORT_04.md](docs/PROGRESS_REPORT_04.md).
 
 ## Estructura
 
@@ -14,7 +14,7 @@ backend/            API FastAPI (monolito modular)
   app/engine/       motor estadístico MSA (independiente de API y BD)
   app/modules/      identity · organizations · audit · documents · gages · standards · competency
                     calibration · laboratory · notifications · dashboard · health
-                    msa · oot · configuration · events · integrations · compliance
+                    msa · oot · configuration · events · integrations · compliance · reports
   alembic/          migraciones versionadas
   tests/            pruebas unitarias e integración (PostgreSQL real)
 frontend/           Next.js (App Router)
@@ -23,6 +23,8 @@ frontend/           Next.js (App Router)
   src/lib/          cliente API, auth, i18n (es/en), tipos
 docs/               plan maestro, línea base, ADRs, roadmap, reporte de avance
 edge/edge_agent.py  agente de referencia del Edge Connector (cola local store-and-forward)
+deploy/             paquete de instalación privada / producción (compose, Caddy, .env.example, backup/restore)
+scripts/            backup.ps1 · restore.ps1 · demo-reset.ps1 · dev-db.ps1
 scripts/dev-db.ps1  PostgreSQL local sin Docker
 docker-compose.yml  stack de desarrollo con Docker
 ```
@@ -65,13 +67,28 @@ no permite ejecutar, revisar ni aprobar actividades restringidas (comportamiento
 se requiere la autorización `MSA_EVALUATION`. Los criterios de aceptación MSA se crean (hay plantillas) y los aprueba
 otro usuario en *MSA → Criterios MSA*; sin criterios aprobados los resultados no emiten decisión.
 
+## Documentación
+
+| Tema | Documento |
+|---|---|
+| Arquitectura · datos · API | [ARCHITECTURE](docs/ARCHITECTURE.md) · [DATABASE](docs/DATABASE.md) · [API](docs/API.md) |
+| Seguridad | [SECURITY](docs/SECURITY.md) |
+| Despliegue | [Privado](docs/DEPLOYMENT_PRIVATE.md) · [Nube](docs/DEPLOYMENT_CLOUD.md) · [Respaldo](docs/BACKUP_RESTORE.md) |
+| Manuales | [Usuario](docs/USER_MANUAL.md) · [Administración](docs/ADMIN_MANUAL.md) |
+| Calidad y liberación | [Pruebas](docs/TESTING.md) · [Notas de versión](docs/RELEASE_NOTES.md) · [UAT](docs/UAT.md) · [Defectos](docs/DEFECTS.md) |
+| MSA · integraciones | [docs/msa](docs/msa/README.md) · [docs/integrations](docs/integrations/README.md) |
+
+## Demo
+
+`powershell -File scripts/demo-reset.ps1` reconstruye la base separada `gagetracker_demo` con datos **ficticios** marcados [DEMO] (usuarios `@demo.example.com`, contraseña en `DEMO_PASSWORD`, por defecto `Demo-GageTracker-2026`). Nunca toca otras bases.
+
 ## Ejecución con Docker
 
 ```bash
 docker compose up --build    # web :3000 · API :8000 · PostgreSQL :5433
 ```
 
-> Los archivos Docker están escritos pero **no se han probado** en este entorno (Docker no instalado).
+> Desarrollo: `docker-compose.yml`. Producción / instalación privada: `deploy/docker-compose.yml` (ver docs/DEPLOYMENT_PRIVATE.md). **Ninguno se ha ejecutado** en este entorno (Docker no instalado).
 
 ## Pruebas
 
@@ -79,6 +96,8 @@ docker compose up --build    # web :3000 · API :8000 · PostgreSQL :5433
 cd backend;  .venv\Scripts\python -m pytest        # requiere TEST_DATABASE_URL (ver .env.example)
 cd frontend; npm test; npm run typecheck; npm run build
 ```
+
+Lint: `ruff check app tests scripts alembic`. Rendimiento: `python -m scripts.perf_check` (base dedicada). CI propuesto: `.github/workflows/ci.yml`.
 
 La suite de backend reconstruye el esquema en la BD de pruebas mediante las migraciones
 (upgrade → downgrade base → upgrade) en cada ejecución.
@@ -99,3 +118,6 @@ La suite de backend reconstruye el esquema en la BD de pruebas mediante las migr
 | `MAX_UPLOAD_MB` | Tamaño máximo por archivo (default 20) |
 | `SCHEDULER_ENABLED`, `SCHEDULER_INTERVAL_SECONDS` | Tareas de fondo: webhooks, escalamientos, barrido de vencidos |
 | `WEBHOOK_ALLOW_HTTP`, `WEBHOOK_TIMEOUT_SECONDS` | Webhooks (en producción solo https) |
+| `SECRET_ENCRYPTION_KEY` | Clave Fernet para secretos en reposo (obligatoria en producción) |
+| `LOGIN_MAX_FAILURES`, `LOGIN_LOCKOUT_MINUTES` | Bloqueo por intentos fallidos (5 / 15 min) |
+| `PASSWORD_RESET_TTL_MINUTES` | Vigencia del enlace de restablecimiento (60) |

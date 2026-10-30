@@ -285,7 +285,7 @@ function RunView({ run }: { run: MsaRun }) {
         actions={<ToneBadge tone={DECISION_TONE[run.decision]}>{t(`msa.dec.${run.decision}`)}</ToneBadge>}>
         <div className="grid gap-3 text-[12px] sm:grid-cols-3">
           <Spec label={t("msa.model")}>{r.model}</Spec>
-          <Spec label="Engine">{t("msa.engine", { e: run.engine_version, a: run.algorithm_version })} ·{" "}
+          <Spec label={t("msa.engineLabel")}>{t("msa.engine", { e: run.engine_version, a: run.algorithm_version })} ·{" "}
             {run.validation_status === "VALIDATED" ? t("msa.validated") : t("msa.experimental")}</Spec>
           <Spec label={t("msa.inputHash")} mono>{run.input_hash.slice(0, 20)}…</Spec>
         </div>
@@ -315,7 +315,7 @@ function RunView({ run }: { run: MsaRun }) {
           </table></div>
         </Card>
       )}
-      <Card title="Charts">
+      <Card title={t("msa.charts")}>
         <div className="grid gap-4 lg:grid-cols-2">
           {fam === "VARIABLE_GRR" && r.tables.components && (
             <BarChart title={t("msa.chart.components")} labels={["EV", "AV", "GRR", "PV"]} unit="%"
@@ -361,7 +361,7 @@ function RunView({ run }: { run: MsaRun }) {
 }
 
 function ReportsTab({ s, caps }: { s: MsaStudy; caps: Set<string> }) {
-  const { t, fmtDateTime } = useI18n();
+  const { t, fmtDateTime, lang } = useI18n();
   const { can } = useAuth();
   const reports = useResource(() => api.get<MsaReport[]>(`/msa/studies/${s.id}/reports`), [s.id]);
   const runs = useResource(() => api.get<RunSummary[]>(`/msa/studies/${s.id}/runs`), [s.id]);
@@ -369,7 +369,7 @@ function ReportsTab({ s, caps }: { s: MsaStudy; caps: Set<string> }) {
   const runNo = (id: string) => runs.data?.find((r) => r.id === id)?.run_number ?? "?";
   return (
     <Card title={t("msa.tab.reports")} actions={caps.has("report") && can("msa:manage") &&
-      <Button variant="primary" disabled={!!busy || !runs.data?.length} onClick={() => run("rep", () => api.post(`/msa/studies/${s.id}/reports`, {}), reports.reload)}>{t("msa.issueReport")}</Button>}>
+      <Button variant="primary" disabled={!!busy || !runs.data?.length} onClick={() => run("rep", () => api.post(`/msa/studies/${s.id}/reports`, { lang }), reports.reload)}>{t("msa.issueReport")}</Button>}>
       {error && <Alert>{error}</Alert>}
       {!reports.data?.length ? <EmptyState>{t("msa.noReports")}</EmptyState> : (
         <ul className="divide-y divide-line">

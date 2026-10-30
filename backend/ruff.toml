@@ -1,0 +1,10 @@
+# Static checks run in CI: syntax errors and pyflakes (undefined names, unused imports/variables).
+target-version = "py312"
+line-length = 120
+
+[lint]
+select = ["E9", "F"]
+
+[lint.per-file-ignores]
+# Tests import pytest fixtures from other test modules on purpose.
+"tests/*" = ["F811"]

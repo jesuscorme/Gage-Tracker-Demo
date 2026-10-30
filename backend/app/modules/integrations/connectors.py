@@ -25,6 +25,7 @@ from app.modules.gages import service as gages
 from app.modules.gages.status import GageStatus
 from app.modules.identity.deps import TenantContext
 from app.modules.integrations.models import Device, DeviceReading
+from app.modules.organizations.router import get_plant
 
 
 @dataclass(frozen=True)
@@ -114,8 +115,7 @@ def list_devices(ctx: TenantContext) -> list[Device]:
 def create_device(ctx: TenantContext, data: dict) -> Device:
     if data["adapter"] not in ADAPTERS:
         raise BusinessRuleError("Unknown adapter", code="invalid_adapter", details=list(ADAPTERS))
-    if not ctx.can_access_plant(data["plant_id"]):
-        raise NotFoundError("Plant not found")
+    get_plant(ctx, data["plant_id"])
     if data.get("gage_id"):
         gages.get_gage(ctx, data["gage_id"])
     code = data["device_code"].strip().upper()

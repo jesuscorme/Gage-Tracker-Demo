@@ -78,6 +78,10 @@ async def upload_attachment(
 def download_attachment(attachment_id: uuid.UUID, ctx: TenantContext = Depends(get_tenant_context)):
     att = service.get_attachment(ctx, attachment_id)
     data = get_storage().get(att.storage_key)
+    # Access to controlled documents is part of the audit trail.
+    ctx.audit(action="document.downloaded", entity_type=att.entity_type, entity_id=att.entity_id,
+              changes={"document_id": str(att.id), "filename": att.original_filename})
+    ctx.db.commit()
     disposition = "inline" if att.content_type in ("application/pdf", "image/png", "image/jpeg", "image/webp") else "attachment"
     return Response(
         content=data,

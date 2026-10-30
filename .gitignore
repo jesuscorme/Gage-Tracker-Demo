@@ -26,3 +26,7 @@ Thumbs.db
 
 # Uploaded documents in local development
 backend/var/
+
+# Deployment secrets
+deploy/.env
+backend/var/

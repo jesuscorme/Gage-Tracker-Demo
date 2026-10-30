@@ -51,6 +51,7 @@ const NAV: { section: MessageKey; items: NavItem[] }[] = [
   {
     section: "nav.section.quality",
     items: [
+      { href: "/reports", label: "nav.reports", icon: "file", permission: "gages:read" },
       { href: "/compliance", label: "nav.compliance", icon: "audit", permission: "compliance:read" },
       { href: "/integrations", label: "nav.integrations", icon: "board", permission: "integrations:read" },
       { href: "/settings/configuration", label: "nav.configuration", icon: "gear", permission: "config:read" },
@@ -64,6 +65,7 @@ const NAV: { section: MessageKey; items: NavItem[] }[] = [
       { href: "/settings/users", label: "nav.users", icon: "users", permission: "users:read" },
       { href: "/settings/technical", label: "nav.settings", icon: "gear", permission: "calibration:read" },
       { href: "/audit", label: "nav.audit", icon: "audit", permission: "audit:read" },
+      { href: "/account", label: "nav.account", icon: "users" },
     ],
   },
 ];

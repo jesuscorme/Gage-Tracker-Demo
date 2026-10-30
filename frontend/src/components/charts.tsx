@@ -8,15 +8,17 @@ export interface HLine { value: number | null | undefined; label: string; tone?:
 function bounds(values: number[]): [number, number] {
   let lo = Math.min(...values);
   let hi = Math.max(...values);
+  const nonNegative = lo >= 0;
   if (lo === hi) {
     lo -= 1;
     hi += 1;
   }
   const pad = (hi - lo) * 0.08;
-  return [lo - pad, hi + pad];
+  // Counts never go below zero: keep the axis at 0 instead of drawing a negative range.
+  return [nonNegative ? Math.max(0, lo - pad) : lo - pad, hi + pad];
 }
 
-const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(1) : Math.abs(v) >= 1 ? v.toFixed(3) : v.toPrecision(3));
+const fmt = (v: number) => (Number.isInteger(v) ? String(v) : Math.abs(v) >= 100 ? v.toFixed(1) : Math.abs(v) >= 1 ? v.toFixed(3) : v.toPrecision(3));
 
 export function LineChart({ title, series, hlines = [], height = 200, xLabels }: {
   title: string; series: Series[]; hlines?: HLine[]; height?: number; xLabels?: (string | number)[];

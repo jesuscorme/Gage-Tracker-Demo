@@ -10,7 +10,7 @@ from app.core.errors import BusinessRuleError, ConflictError, NotFoundError
 from app.core.sequences import next_code
 from app.modules.audit import service as audit
 from app.modules.calibration import service as calibration
-from app.modules.calibration.models import CalibrationActivity, CalibrationPoint
+from app.modules.calibration.models import CalibrationActivity
 from app.modules.configuration import service as config
 from app.modules.configuration import workflow
 from app.modules.documents.models import Attachment

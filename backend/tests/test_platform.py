@@ -19,7 +19,7 @@ def test_health_live_and_ready(client):
     assert client.get("/health/live").json() == {"status": "ok"}
     r = client.get("/health/ready")
     assert r.status_code == 200
-    assert r.json()["schema_revision"] == "0010_integrations"
+    assert r.json()["schema_revision"] == "0011_security"
 
 
 def test_request_id_is_returned(client):

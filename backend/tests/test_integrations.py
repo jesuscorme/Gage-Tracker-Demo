@@ -1,7 +1,6 @@
 """Integrations & Data: API clients, idempotency, webhooks, imports, devices and exchange contracts."""
 
 import hashlib
-import hmac
 import io
 import json
 from datetime import UTC, datetime, timedelta

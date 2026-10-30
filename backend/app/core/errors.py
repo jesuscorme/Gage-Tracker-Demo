@@ -49,6 +49,11 @@ class ConflictError(AppError):
     code = "conflict"
 
 
+class TooManyRequestsError(AppError):
+    status_code = 429
+    code = "too_many_requests"
+
+
 class BusinessRuleError(AppError):
     status_code = 422
     code = "business_rule_violation"

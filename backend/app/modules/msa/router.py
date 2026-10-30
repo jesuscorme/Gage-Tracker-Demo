@@ -291,6 +291,7 @@ class ConclusionIn(BaseModel):
 
 class ReportIn(BaseModel):
     run_id: uuid.UUID | None = None
+    lang: Literal["es", "en"] | None = None
 
 
 class ReportOut(BaseModel):
@@ -408,7 +409,7 @@ def conclude(study_id: uuid.UUID, body: ConclusionIn, ctx: TenantContext = Depen
 
 @router.post("/msa/studies/{study_id}/reports", response_model=ReportOut, status_code=201)
 def issue_report(study_id: uuid.UUID, body: ReportIn, ctx: TenantContext = Depends(require(P.MSA_MANAGE))):
-    return service.issue_report(ctx, study_id, body.run_id)
+    return service.issue_report(ctx, study_id, body.run_id, body.lang)
 
 
 @router.get("/msa/studies/{study_id}/reports", response_model=list[ReportOut])

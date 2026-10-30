@@ -1,16 +1,19 @@
+import hashlib
 import re
 import secrets
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.errors import (
+    TooManyRequestsError,
     AuthenticationError,
     BusinessRuleError,
     ConflictError,
@@ -19,10 +22,12 @@ from app.core.errors import (
 )
 from app.core.security import create_access_token, hash_password, verify_password
 from app.modules.audit import service as audit
+from app.modules.audit.models import AuditEvent
 from app.modules.identity.deps import TenantContext, get_current_user, require
-from app.modules.identity.models import OrganizationMembership, Role, User
+from app.modules.identity.models import OrganizationMembership, PasswordResetToken, Role, User
 from app.modules.identity.permissions import P
 from app.modules.identity.schemas import (
+    _check_password,
     LoginRequest,
     MembershipOut,
     MeOut,
@@ -115,13 +120,32 @@ def register(body: RegisterRequest, request: Request, db: Session = Depends(get_
             actor_user_id=user.id, changes=changes, ip_address=ip,
         )
     db.commit()
-    token, ttl = create_access_token(user.id)
+    token, ttl = create_access_token(user.id, user.token_version or 0)
     return TokenResponse(access_token=token, expires_in=ttl)
+
+
+def _recent_failures(db: Session, user: User) -> int:
+    s = get_settings()
+    since = datetime.now(UTC) - timedelta(minutes=s.login_lockout_minutes)
+    last_ok = db.scalar(select(func.max(AuditEvent.created_at)).where(
+        AuditEvent.entity_type == "user", AuditEvent.entity_id == str(user.id),
+        AuditEvent.action.in_(("auth.login", "auth.password_reset"))))
+    if last_ok and last_ok > since:
+        since = last_ok
+    return db.scalar(select(func.count()).select_from(AuditEvent).where(
+        AuditEvent.entity_type == "user", AuditEvent.entity_id == str(user.id),
+        AuditEvent.action == "auth.login_failed", AuditEvent.created_at > since)) or 0
 
 
 @auth_router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == body.email.lower()))
+    if user and _recent_failures(db, user) >= get_settings().login_max_failures:
+        audit.record(db, action="auth.login_locked", entity_type="user", entity_id=user.id,
+                     actor_user_id=user.id, ip_address=_client_ip(request))
+        db.commit()
+        raise TooManyRequestsError("Too many failed attempts. Try again later or ask an administrator for a "
+                                   "reset link.", code="too_many_attempts")
     ok = verify_password(body.password, user.password_hash if user else _DUMMY_HASH)
     if not user or not ok or not user.is_active:
         if user:
@@ -137,7 +161,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
         actor_user_id=user.id, ip_address=_client_ip(request),
     )
     db.commit()
-    token, ttl = create_access_token(user.id)
+    token, ttl = create_access_token(user.id, user.token_version)
     return TokenResponse(access_token=token, expires_in=ttl)
 
 
@@ -299,3 +323,81 @@ def update_user(user_id: uuid.UUID, body: UserUpdate, ctx: TenantContext = Depen
     db.commit()
     db.refresh(m)
     return _user_out(m)
+
+
+# ---------------------------------------------------------------- sessions and passwords
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str = Field(max_length=200)
+    new_password: str
+
+    _pw = field_validator("new_password")(_check_password)
+
+
+class ResetPasswordIn(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+    new_password: str
+
+    _pw = field_validator("new_password")(_check_password)
+
+
+class ResetIssued(BaseModel):
+    reset_token: str
+    expires_at: datetime
+
+
+@auth_router.post("/change-password", response_model=TokenResponse)
+def change_password(body: ChangePasswordIn, request: Request, user: User = Depends(get_current_user),
+                    db: Session = Depends(get_db)):
+    if not verify_password(body.current_password, user.password_hash):
+        raise AuthenticationError("Current password is incorrect", code="invalid_credentials")
+    user.password_hash = hash_password(body.new_password)
+    user.token_version = (user.token_version or 0) + 1
+    audit.record(db, action="auth.password_changed", entity_type="user", entity_id=user.id, actor_user_id=user.id,
+                 ip_address=_client_ip(request))
+    db.commit()
+    token, ttl = create_access_token(user.id, user.token_version)
+    return TokenResponse(access_token=token, expires_in=ttl)
+
+
+@auth_router.post("/logout-all", status_code=204)
+def logout_all(request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Revoke every token issued to the user (all devices)."""
+    user.token_version = (user.token_version or 0) + 1
+    audit.record(db, action="auth.logout_all", entity_type="user", entity_id=user.id, actor_user_id=user.id,
+                 ip_address=_client_ip(request))
+    db.commit()
+
+
+@auth_router.post("/reset-password", status_code=204)
+def reset_password(body: ResetPasswordIn, request: Request, db: Session = Depends(get_db)):
+    digest = hashlib.sha256(body.token.encode()).hexdigest()
+    row = db.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == digest).with_for_update())
+    if row is None or row.used_at is not None or row.expires_at <= datetime.now(UTC):
+        raise BusinessRuleError("The reset link is invalid or has expired", code="invalid_reset_token")
+    user = db.get(User, row.user_id)
+    if user is None or not user.is_active:
+        raise BusinessRuleError("The reset link is invalid or has expired", code="invalid_reset_token")
+    row.used_at = datetime.now(UTC)
+    user.password_hash = hash_password(body.new_password)
+    user.token_version = (user.token_version or 0) + 1
+    audit.record(db, action="auth.password_reset", entity_type="user", entity_id=user.id, actor_user_id=user.id,
+                 ip_address=_client_ip(request))
+    db.commit()
+
+
+@users_router.post("/users/{user_id}/password-reset", response_model=ResetIssued, status_code=201)
+def issue_password_reset(user_id: uuid.UUID, ctx: TenantContext = Depends(require(P.USERS_MANAGE))):
+    """One-time reset token for a member (delivered by the administrator; shown once)."""
+    m = _membership(ctx, user_id)
+    if m.user.email.endswith("@service.invalid"):
+        raise BusinessRuleError("Service accounts have no password", code="service_account")
+    raw = secrets.token_urlsafe(32)
+    expires = datetime.now(UTC) + timedelta(minutes=get_settings().password_reset_ttl_minutes)
+    ctx.db.add(PasswordResetToken(user_id=user_id, token_hash=hashlib.sha256(raw.encode()).hexdigest(),
+                                  created_by=ctx.user_id, expires_at=expires))
+    ctx.audit(action="user.password_reset_issued", entity_type="user", entity_id=user_id,
+              changes={"expires_at": expires.isoformat()})
+    ctx.db.commit()
+    return ResetIssued(reset_token=raw, expires_at=expires)

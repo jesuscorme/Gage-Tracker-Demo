@@ -123,3 +123,22 @@ def test_plant_scope_restricts_within_organization(client, make_org, gage_type, 
     r = manager.post(f"/api/v1/gages/{p1_gage['id']}/transfer", json={"plant_id": p2["id"], "reason": "move"})
     assert r.status_code == 404  # cannot move a gage into a plant outside the user's scope
     assert tech.get("/api/v1/dashboard/summary").json()["total_in_service"] == 1
+
+
+def test_records_cannot_reference_another_organizations_plant(make_org, gage_type, new_gage, authorize):
+    """Regression (block 4 audit): plant ids from another tenant are rejected on write."""
+    a, b = make_org("Org A"), make_org("Org B")
+    g = new_gage(a, gage_type(a, "CAL")["id"], "G-A")
+    r = a.post("/api/v1/msa/studies", json={
+        "title": "Cross tenant", "method": "BIAS", "characteristic": "x", "plant_id": b.plant_id, "gage_id": g["id"],
+        "responsible_id": a.get("/api/v1/auth/me").json()["id"], "start_date": "2026-01-01",
+        "design": {"reference": 1.0}})
+    assert r.status_code == 404
+    r = a.post("/api/v1/msa/criteria", json={"name": "Cross", "method": "BIAS", "scope": "PLANT", "plant_id": b.plant_id,
+                                             "source": "internal", "rules": [{"metric": "abs_bias", "op": "lte",
+                                                                              "value": 1}]})
+    assert r.status_code == 404
+    r = a.post("/api/v1/integrations/devices", json={"device_code": "D1", "name": "Dev", "adapter": "simulator",
+                                                     "plant_id": b.plant_id})
+    assert r.status_code == 404
+    assert a.get(f"/api/v1/dashboard/overview?plant_id={b.plant_id}").status_code == 404

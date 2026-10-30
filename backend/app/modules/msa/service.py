@@ -22,6 +22,7 @@ from app.modules.identity.deps import TenantContext
 from app.modules.identity.permissions import P
 from app.modules.msa.models import DECISIONS, MsaCriteriaSet, MsaObservation, MsaReport, MsaRun, MsaStudy
 from app.modules.notifications.service import notify
+from app.modules.organizations.router import get_plant
 
 ENTITY = "msa_study"
 STUDY_FIELDS = ["title", "method", "characteristic", "part_number", "part_revision", "customer", "gage_id",
@@ -168,8 +169,7 @@ def _check_criteria_choice(ctx: TenantContext, criteria_id, method: str) -> None
 
 
 def create_study(ctx: TenantContext, data: dict, custom_fields: dict | None) -> MsaStudy:
-    if not ctx.can_access_plant(data["plant_id"]):
-        raise NotFoundError("Plant not found")
+    get_plant(ctx, data["plant_id"])
     gage = _check_gage(ctx, data["gage_id"])
     gages.ensure_active_member(ctx, data["responsible_id"], "invalid_responsible")
     _check_design(data["method"], data["design"], data["params"])
@@ -203,8 +203,8 @@ def update_study(ctx: TenantContext, study_id: uuid.UUID, data: dict) -> MsaStud
         _check_gage(ctx, data["gage_id"])
     if "responsible_id" in data:
         gages.ensure_active_member(ctx, data["responsible_id"], "invalid_responsible")
-    if "plant_id" in data and not ctx.can_access_plant(data["plant_id"]):
-        raise NotFoundError("Plant not found")
+    if "plant_id" in data:
+        get_plant(ctx, data["plant_id"])
     _check_design(method, data.get("design", study.design), data.get("params", study.params))
     _check_criteria_choice(ctx, data.get("criteria_set_id", study.criteria_set_id), method)
     _check_department(ctx, data.get("plant_id", study.plant_id), data.get("department_id", study.department_id))
@@ -538,8 +538,8 @@ def create_criteria(ctx: TenantContext, data: dict) -> MsaCriteriaSet:
         errors.append("ORGANIZATION scope applies to the whole organization (no plant or customer)")
     if errors:
         raise BusinessRuleError("The acceptance criteria are not valid", code="invalid_criteria", details=errors)
-    if data.get("plant_id") and not ctx.can_access_plant(data["plant_id"]):
-        raise NotFoundError("Plant not found")
+    if data.get("plant_id"):
+        get_plant(ctx, data["plant_id"])
     version = (ctx.db.scalar(select(func.max(MsaCriteriaSet.version)).where(
         MsaCriteriaSet.organization_id == ctx.organization_id, MsaCriteriaSet.name == data["name"])) or 0) + 1
     c = MsaCriteriaSet(organization_id=ctx.organization_id, version=version, status="DRAFT", created_by=ctx.user_id,
@@ -778,7 +778,8 @@ def _name(ctx: TenantContext, user_id) -> str | None:
     return ctx.db.scalar(select(User.full_name).where(User.id == user_id)) if user_id else None
 
 
-def issue_report(ctx: TenantContext, study_id: uuid.UUID, run_id: uuid.UUID | None) -> MsaReport:
+def issue_report(ctx: TenantContext, study_id: uuid.UUID, run_id: uuid.UUID | None,
+                 lang: str | None = None) -> MsaReport:
     from app.modules.documents import service as documents
     from app.modules.msa.report_pdf import render
     from app.modules.organizations.models import Department, Plant
@@ -805,6 +806,7 @@ def issue_report(ctx: TenantContext, study_id: uuid.UUID, run_id: uuid.UUID | No
         "decision": run.decision, "final_decision": study.final_decision, "final_comment": study.final_comment,
         "concluded_by": _name(ctx, study.concluded_by), "calculated_by": _name(ctx, run.calculated_by),
         "calculated_at": run.calculated_at.isoformat(timespec="seconds"),
+        "lang": lang or ctx.user.preferred_language or "es",
     }
     pdf = render(snap)
     att = documents.store(ctx, entity_type=ENTITY, entity_id=study.id, category="REPORT",

@@ -22,6 +22,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.core import crypto
 from app.core.config import get_settings
 from app.core.errors import BusinessRuleError, ConflictError, NotFoundError
 from app.modules.events.models import EVENT_TYPES, OutboxEvent
@@ -60,7 +61,7 @@ def create_endpoint(ctx: TenantContext, name: str, url: str, event_types: list[s
         raise BusinessRuleError("Unknown event types", code="invalid_event_types",
                                 details={"unknown": bad, "available": list(EVENT_TYPES)})
     secret = "whsec_" + secrets.token_urlsafe(24)
-    ep = WebhookEndpoint(organization_id=ctx.organization_id, name=name, url=url, secret=secret,
+    ep = WebhookEndpoint(organization_id=ctx.organization_id, name=name, url=url, secret=crypto.encrypt(secret),
                          event_types=sorted(set(event_types)), created_by=ctx.user_id)
     ctx.db.add(ep)
     ctx.db.flush()
@@ -177,7 +178,7 @@ def dispatch(db: Session, sender: Sender = http_sender, now: datetime | None = N
         ts = str(int(time.time()))
         headers = {"Content-Type": "application/json", "User-Agent": "GageTracker-Webhooks/1",
                    "X-GageTracker-Event": event.event_type, "X-GageTracker-Delivery": str(d.id),
-                   "X-GageTracker-Timestamp": ts, "X-GageTracker-Signature": sign(ep.secret, ts, body)}
+                   "X-GageTracker-Timestamp": ts, "X-GageTracker-Signature": sign(crypto.decrypt(ep.secret), ts, body)}
         started = time.monotonic()
         code, error = None, None
         try:

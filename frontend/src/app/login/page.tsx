@@ -29,7 +29,7 @@ export default function LoginPage() {
     try {
       await login(email, password);
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 401 ? t("auth.invalid") : errorText(t, err));
+      setError(err instanceof ApiError && err.status === 401 ? t("auth.invalid") : err instanceof ApiError && err.status === 429 ? t("acc.tooMany") : errorText(t, err));
     } finally {
       setBusy(false);
     }

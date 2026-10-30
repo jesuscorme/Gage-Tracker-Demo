@@ -58,6 +58,15 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         finally:
             request_id_var.reset(token)
         response.headers["X-Request-ID"] = rid
+        # Baseline security headers (the web front end sets its own for pages).
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        # JSON responses get a deny-all CSP; docs and file downloads (inline PDF viewer) are exempt.
+        if not request.url.path.startswith("/api/docs") and not request.url.path.endswith("/download"):
+            response.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+        if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         logging.getLogger("app.request").info(
             "request",
             extra={

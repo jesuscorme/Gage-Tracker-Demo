@@ -4,3 +4,4 @@ httpx==0.28.1
 # Independent statistical implementations used only by the engine validation tests.
 statsmodels==0.14.5
 pandas==2.3.3
+ruff==0.13.3

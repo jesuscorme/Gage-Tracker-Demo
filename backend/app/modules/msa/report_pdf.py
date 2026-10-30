@@ -18,6 +18,10 @@ METHOD_NAMES = {
 }
 
 
+ES = {'MSA Study Report': 'Reporte de estudio MSA', 'run': 'cálculo', 'issued': 'emitido', 'page': 'página', 'Statistical results': 'Resultados estadísticos', 'Model': 'Modelo', 'Source': 'Fuente', 'StdDev': 'Desv. est.', 'Variance': 'Varianza', 'Study var': 'Var. estudio', '%Contribution': '%Contribución', '%Study var': '%Var. estudio', '%Tolerance': '%Tolerancia', 'Study variation multiplier': 'Multiplicador de variación de estudio', 'Components of variation (%Study variation)': 'Componentes de variación (%Var. estudio)', 'Range chart by operator': 'Carta de rangos por operador', 'Average chart by operator': 'Carta de promedios por operador', 'Appraiser': 'Evaluador', 'Within %': 'Dentro %', 'vs reference %': 'vs referencia %', 'kappa vs ref': 'kappa vs ref.', 'Effectiveness %': 'Efectividad %', 'Miss %': 'Omisión %', 'False alarm %': 'Falsa alarma %', 'Between appraisers': 'Entre evaluadores', 'All vs reference': 'Todos vs referencia', 'Within-appraiser agreement (%)': 'Acuerdo dentro del evaluador (%)', '95% CI of bias': 'IC 95 % del sesgo', 'CI of bias': 'IC del sesgo', 'Histogram of readings': 'Histograma de lecturas', 'Readings vs reference': 'Lecturas vs referencia', 'Run chart (reference +/- K/2 % of tolerance)': 'Gráfica de corrida (referencia +/- K/2 % de la tolerancia)', 'Part': 'Pieza', 'Reference': 'Referencia', 'Average bias': 'Sesgo promedio', 'Bias vs reference (points), fit and confidence bands': 'Sesgo vs referencia (puntos), ajuste y bandas de confianza', 'Fitted line and confidence bands by reference value': 'Recta ajustada y bandas de confianza por valor de referencia', 'Subgroup': 'Subgrupo', 'Criterion (AIAG SPC Table II.1)': 'Criterio (Tabla II.1 manual SPC AIAG)', 'Note': 'Nota', 'Study': 'Estudio', 'Title': 'Título', 'Characteristic': 'Característica', 'Part number / revision': 'Número de parte / revisión', 'Customer': 'Cliente', 'Plant / department': 'Planta / departamento', 'Gage': 'Instrumento', 'status at calculation': 'estado al calcular', 'next due': 'vence', 'Responsible': 'Responsable', 'Dates': 'Fechas', 'start': 'inicio', 'end': 'fin', 'Operators / appraisers': 'Operadores / evaluadores', 'Design and method': 'Diseño y método', 'Method': 'Método', 'Design': 'Diseño', 'Parameters': 'Parámetros', 'defaults': 'predeterminados', 'Observations used': 'Observaciones utilizadas', 'Calculated': 'Calculado', 'by': 'por', 'Acceptance criteria and conclusion': 'Criterios de aceptación y conclusión', 'Criteria': 'Criterios', 'Approved': 'Aprobado', 'Metric': 'Indicador', 'Rule': 'Regla', 'Actual': 'Valor', 'Status': 'Estado', 'Computed decision': 'Decisión calculada', 'Conclusion': 'Conclusión', 'pending review': 'pendiente de revisión', 'Concluded by': 'Concluyó', 'Data': 'Datos', 'NO_CRITERIA_TEXT': 'No se aplicaron criterios de aceptación aprobados: el resultado es solo estadístico y no constituye una decisión de aceptación.', 'DISCLAIMER_TEXT': 'Este reporte documenta un análisis estadístico. La aceptación depende de los criterios aprobados por la organización y de su propia evaluación de los requisitos aplicables.', 'Gage R&R crossed - Average & Range': 'GRR cruzado - Promedio y Rango', 'Gage R&R crossed - ANOVA': 'GRR cruzado - ANOVA', 'Gage R&R nested - ANOVA': 'GRR anidado - ANOVA', 'Attribute Agreement Analysis': 'Análisis de concordancia por atributos', 'Bias study': 'Estudio de sesgo', 'Linearity study': 'Estudio de linealidad', 'Stability study': 'Estudio de estabilidad', 'Type 1 gage study': 'Estudio tipo 1'}
+EN_LONG = {'NO_CRITERIA_TEXT': 'No approved acceptance criteria applied: the result is statistical only and does not constitute an acceptance decision.', 'DISCLAIMER_TEXT': 'This report documents a statistical analysis. Acceptance depends on the criteria approved by the organization and on its own evaluation of applicable requirements.'}
+
+
 def _t(v) -> str:
     return ("" if v is None else str(v)).encode("latin-1", "replace").decode("latin-1")
 
@@ -36,17 +40,24 @@ class _Pdf(FPDF):
     def __init__(self, snap: dict):
         super().__init__(orientation="P", unit="mm", format="A4")
         self.snap = snap
+        self.lang = snap.get("lang", "en")
         self.set_auto_page_break(auto=True, margin=15)
         self.set_title(_t(f"{snap['study_code']} report rev {snap['revision']}"))
+
+    def L(self, text: str) -> str:
+        """Translate a fixed label (never data) to the report language."""
+        if self.lang == "es":
+            return ES.get(text, text)
+        return EN_LONG.get(text, text)
 
     def header(self):
         s = self.snap
         self.set_font("Helvetica", "B", 13)
-        self.cell(0, 7, _t(f"MSA Study Report - {METHOD_NAMES.get(s['method'], s['method'])}"),
+        self.cell(0, 7, _t(f"{self.L('MSA Study Report')} - {self.L(METHOD_NAMES.get(s['method'], s['method']))}"),
                   new_x="LMARGIN", new_y="NEXT")
         self.set_font("Helvetica", "", 8)
         self.cell(0, 4, _t(f"{s['organization']}  |  {s['study_code']} rev {s['revision']}  |  "
-                           f"run #{s['run_number']}  |  issued {s['issued_on']}"), new_x="LMARGIN", new_y="NEXT")
+                           f"{self.L('run')} #{s['run_number']}  |  {self.L('issued')} {s['issued_on']}"), new_x="LMARGIN", new_y="NEXT")
         self.ln(2)
 
     def footer(self):
@@ -54,28 +65,28 @@ class _Pdf(FPDF):
         self.set_y(-12)
         self.set_font("Helvetica", "", 7)
         self.cell(0, 4, _t(f"Gage Tracker MSA engine {s['engine_version']} / {s['method']} {s['algorithm_version']} "
-                           f"({s['validation_status']}) | input sha256 {s['input_hash'][:16]}... | page "
+                           f"({s['validation_status']}) | input sha256 {s['input_hash'][:16]}... | {self.L('page')} "
                            f"{self.page_no()}"), align="R")
 
     def section(self, title):
         self.ln(2)
         self.set_font("Helvetica", "B", 10)
         self.set_fill_color(235, 238, 242)
-        self.cell(0, 6, _t(title), fill=True, new_x="LMARGIN", new_y="NEXT")
+        self.cell(0, 6, _t(self.L(title)), fill=True, new_x="LMARGIN", new_y="NEXT")
         self.set_font("Helvetica", "", 8)
         self.ln(1)
 
     def kv(self, rows, col=48):
         for label, value in rows:
             self.set_font("Helvetica", "B", 8)
-            self.cell(col, 4.5, _t(label))
+            self.cell(col, 4.5, _t(self.L(label)))
             self.set_font("Helvetica", "", 8)
             self.multi_cell(0, 4.5, _t(value), new_x="LMARGIN", new_y="NEXT")
 
     def table(self, header, rows, widths):
         self.set_font("Helvetica", "B", 7.5)
         for h, w in zip(header, widths):
-            self.cell(w, 5, _t(h), border=1, fill=True)
+            self.cell(w, 5, _t(self.L(h)), border=1, fill=True)
         self.ln()
         self.set_font("Helvetica", "", 7.5)
         for r in rows:
@@ -92,7 +103,7 @@ class _Pdf(FPDF):
         self.rect(x, y, w, h)
         self.set_font("Helvetica", "B", 7)
         self.set_xy(x, y - 4)
-        self.cell(w, 4, _t(title))
+        self.cell(w, 4, _t(self.L(title)))
         self.set_font("Helvetica", "", 6)
         self.set_xy(x - 14, y - 1.5)
         self.cell(13, 3, _t(fmt(hi, 3)), align="R")
@@ -270,7 +281,7 @@ def _results(pdf: _Pdf, snap: dict) -> None:
                           [[v["subgroup"], v["rule"]] for v in r["tables"]["violations"]], [30, 60])
     for w in r.get("warnings") or []:
         pdf.set_font("Helvetica", "I", 7.5)
-        pdf.multi_cell(0, 4, _t(f"Note: {w}"), new_x="LMARGIN", new_y="NEXT")
+        pdf.multi_cell(0, 4, _t(f"{pdf.L('Note')}: {w}"), new_x="LMARGIN", new_y="NEXT")
 
 
 def render(snap: dict) -> bytes:
@@ -282,19 +293,19 @@ def render(snap: dict) -> bytes:
         ("Part number / revision", f"{snap.get('part_number') or '-'} / {snap.get('part_revision') or '-'}"),
         ("Customer", snap.get("customer") or "-"),
         ("Plant / department", f"{snap['plant']} / {snap.get('department') or '-'}"),
-        ("Gage", f"{snap['gage']['gage_code']} - {snap['gage']['description']} (status at calculation: "
-                 f"{snap['gage']['status']}; next due {snap['gage'].get('next_due_date') or '-'})"),
+        ("Gage", f"{snap['gage']['gage_code']} - {snap['gage']['description']} ({pdf.L('status at calculation')}: "
+                 f"{snap['gage']['status']}; {pdf.L('next due')} {snap['gage'].get('next_due_date') or '-'})"),
         ("Responsible", snap["responsible"]),
-        ("Dates", f"start {snap['start_date']}  end {snap.get('end_date') or '-'}"),
+        ("Dates", f"{pdf.L('start')} {snap['start_date']}  {pdf.L('end')} {snap.get('end_date') or '-'}"),
         ("Operators / appraisers", ", ".join(snap.get("operators") or []) or "-"),
     ])
     pdf.section("Design and method")
     d = snap["input"]["design"]
-    pdf.kv([("Method", f"{METHOD_NAMES.get(snap['method'], snap['method'])} ({snap['method']})"),
+    pdf.kv([("Method", f"{pdf.L(METHOD_NAMES.get(snap['method'], snap['method']))} ({snap['method']})"),
             ("Design", ", ".join(f"{k}={v}" for k, v in d.items() if not isinstance(v, (dict, list))) or "-"),
-            ("Parameters", ", ".join(f"{k}={v}" for k, v in snap["input"]["params"].items()) or "defaults"),
+            ("Parameters", ", ".join(f"{k}={v}" for k, v in snap["input"]["params"].items()) or pdf.L("defaults")),
             ("Observations used", str(len(snap["input"]["observations"]))),
-            ("Calculated", f"{snap['calculated_at']} by {snap['calculated_by']}")])
+            ("Calculated", f"{snap['calculated_at']} {pdf.L('by')} {snap['calculated_by']}")])
     _results(pdf, snap)
     pdf.section("Acceptance criteria and conclusion")
     crit = snap.get("criteria")
@@ -305,10 +316,9 @@ def render(snap: dict) -> bytes:
                   [[e["metric"], f"{e['op']} {e['value']}", fmt(e["actual"], 4), e["status"]]
                    for e in snap.get("evaluation") or []], [60, 40, 40, 40])
     else:
-        pdf.kv([("Criteria", "No approved acceptance criteria applied: the result is statistical only and does "
-                             "not constitute an acceptance decision.")])
+        pdf.kv([("Criteria", pdf.L("NO_CRITERIA_TEXT"))])
     pdf.kv([("Computed decision", snap["decision"]),
-            ("Conclusion", f"{snap.get('final_decision') or 'pending review'}"
+            ("Conclusion", f"{snap.get('final_decision') or pdf.L('pending review')}"
                            f"{' - ' + snap['final_comment'] if snap.get('final_comment') else ''}"),
             ("Concluded by", snap.get("concluded_by") or "-")])
     pdf.section("Data")
@@ -320,6 +330,5 @@ def render(snap: dict) -> bytes:
                      for o in obs], widths)
     pdf.ln(3)
     pdf.set_font("Helvetica", "I", 7)
-    pdf.multi_cell(0, 3.5, _t("This report documents a statistical analysis. Acceptance depends on the criteria "
-                              "approved by the organization and on its own evaluation of applicable requirements."))
+    pdf.multi_cell(0, 3.5, _t(pdf.L("DISCLAIMER_TEXT")))
     return bytes(pdf.output())

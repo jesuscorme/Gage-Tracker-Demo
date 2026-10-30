@@ -73,7 +73,7 @@ def test_grr_study_end_to_end_with_versioned_criteria_and_report(msa, db):
     assert m["pct_tolerance_grr"] == pytest.approx(100 * 6 * m["grr"] / 4.0)
     assert run1["gage_snapshot"]["gage_code"] == "MIC-01"
 
-    crit = grr_criteria(msa, msa.manager)
+    grr_criteria(msa, msa.manager)
     run2 = msa.post(f"/api/v1/msa/studies/{study['id']}/calculate").json()
     assert run2["run_number"] == 2 and run2["decision"] == "CONDITIONAL"
     assert run2["criteria_snapshot"]["name"] == "Corporate GRR" and run2["criteria_snapshot"]["version"] == 1

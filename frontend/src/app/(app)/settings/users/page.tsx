@@ -28,6 +28,15 @@ export default function UsersPage() {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resetLink, setResetLink] = useState<{ url: string; expires: string } | null>(null);
+  async function issueReset(u: OrgUser) {
+    try {
+      const r = await api.post<{ reset_token: string; expires_at: string }>(`/users/${u.id}/password-reset`);
+      setResetLink({ url: `${window.location.origin}/reset-password?token=${encodeURIComponent(r.reset_token)}`, expires: r.expires_at });
+    } catch (err) {
+      setError(errorText(t, err));
+    }
+  }
 
   function open(u: OrgUser | "new") {
     setError(null);
@@ -99,6 +108,9 @@ export default function UsersPage() {
                     <td className="text-right">
                       <div className="inline-flex gap-1">
                         <Button variant="ghost" className="h-7 px-2" onClick={() => open(u)}>{t("common.edit")}</Button>
+                        {u.id !== me?.id && u.is_active && (
+                          <Button variant="ghost" className="h-7 px-2" onClick={() => issueReset(u)}>{t("acc.resetLink")}</Button>
+                        )}
                         {u.id !== me?.id && (
                           <Button variant="ghost" className="h-7 px-2" onClick={() => toggle(u)}>
                             {u.is_active ? t("users.deactivate") : t("users.activate")}
@@ -165,6 +177,13 @@ export default function UsersPage() {
           </div>
           <p className="mt-1 text-[12px] text-ink-3">{t("users.plantsHint")}</p>
         </fieldset>
+      </Modal>
+      <Modal open={!!resetLink} title={t("acc.resetLink")} onClose={() => setResetLink(null)}
+        footer={<Button onClick={() => setResetLink(null)}>{t("common.confirm")}</Button>}>
+        {resetLink && <>
+          <Alert tone="warn">{t("acc.resetIssued", { d: fmtDateTime(resetLink.expires) })}</Alert>
+          <Input readOnly className="mt-3 font-mono text-[12px]" value={resetLink.url} onFocus={(e) => e.currentTarget.select()} />
+        </>}
       </Modal>
     </>
   );
