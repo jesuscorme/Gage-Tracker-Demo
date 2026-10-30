@@ -1,0 +1,25 @@
+# Secrets and local config
+.env
+*.env.local
+!.env.example
+
+# Local dev database cluster (scripts/dev-db.ps1)
+.local/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
