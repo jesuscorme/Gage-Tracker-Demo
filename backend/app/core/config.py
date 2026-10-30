@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     # where tenants are provisioned by an administrator.
     allow_self_registration: bool = True
 
+    # Uploaded documents. Local filesystem for now (see app/core/storage.py).
+    storage_dir: str = "./var/storage"
+    max_upload_mb: int = Field(default=20, ge=1, le=200)
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

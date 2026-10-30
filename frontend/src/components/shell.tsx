@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/messages";
 import { Icon, type IconName } from "./icons";
+import { NotificationBell } from "./notifications";
 import { cx } from "./ui";
 
 interface NavItem {
@@ -29,11 +30,22 @@ const NAV: { section: MessageKey; items: NavItem[] }[] = [
   {
     section: "nav.section.metrology",
     items: [
-      { href: "#", label: "nav.calibration", icon: "calibration", soon: true },
-      { href: "#", label: "nav.msa", icon: "msa", soon: true },
-      { href: "#", label: "nav.laboratory", icon: "lab", soon: true },
-      { href: "#", label: "nav.standards", icon: "standards", soon: true },
-      { href: "#", label: "nav.oot", icon: "oot", soon: true },
+      { href: "/calibrations", label: "nav.calibration", icon: "calibration", permission: "calibration:read" },
+      { href: "/calibrations/calendar", label: "nav.calendar", icon: "calendar", permission: "calibration:read" },
+      { href: "/standards", label: "nav.standards", icon: "standards", permission: "standards:read" },
+      { href: "/competency", label: "nav.competency", icon: "people", permission: "competency:read" },
+      { href: "#msa", label: "nav.msa", icon: "msa", soon: true },
+      { href: "#oot", label: "nav.oot", icon: "oot", soon: true },
+    ],
+  },
+  {
+    section: "nav.section.laboratory",
+    items: [
+      { href: "/laboratory", label: "nav.labOverview", icon: "lab", permission: "lab:read" },
+      { href: "/laboratory/requests", label: "nav.labRequests", icon: "inbox", permission: "lab:read" },
+      { href: "/laboratory/schedule", label: "nav.labSchedule", icon: "board", permission: "lab:manage" },
+      { href: "/laboratory/work-orders", label: "nav.labWorkOrders", icon: "wrench", permission: "lab:read" },
+      { href: "/laboratory/reports", label: "nav.labReports", icon: "file", permission: "lab:read" },
     ],
   },
   {
@@ -42,6 +54,7 @@ const NAV: { section: MessageKey; items: NavItem[] }[] = [
       { href: "/settings/gage-types", label: "nav.gageTypes", icon: "types", permission: "gages:read" },
       { href: "/settings/organization", label: "nav.organization", icon: "org", permission: "organization:read" },
       { href: "/settings/users", label: "nav.users", icon: "users", permission: "users:read" },
+      { href: "/settings/technical", label: "nav.settings", icon: "gear", permission: "calibration:read" },
       { href: "/audit", label: "nav.audit", icon: "audit", permission: "audit:read" },
     ],
   },
@@ -69,6 +82,10 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useI18n();
   const { can } = useAuth();
   const pathname = usePathname();
+  // The most specific matching entry is the active one (/calibrations vs /calibrations/calendar).
+  const activeHref = NAV.flatMap((s) => s.items)
+    .filter((i) => !i.soon && (pathname === i.href || pathname.startsWith(`${i.href}/`)))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
   return (
     <nav className="flex h-full flex-col bg-rail text-rail-ink" aria-label="Main">
@@ -86,7 +103,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 if (item.soon) {
                   return (
                     <div
-                      key={item.label}
+                      key={item.href}
                       title={t("nav.soon")}
                       className="flex cursor-not-allowed items-center gap-2.5 rounded-md px-3 py-2 text-[13px] text-rail-mute/70"
                     >
@@ -96,7 +113,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     </div>
                   );
                 }
-                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const active = item.href === activeHref;
                 return (
                   <Link
                     key={item.href}
@@ -178,6 +195,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
       </div>
 
       <div className="ml-auto flex items-center gap-3">
+        <NotificationBell />
         <LanguageSwitch />
         <div className="hidden text-right leading-tight sm:block">
           <div className="text-[13px] font-medium">{me.full_name}</div>

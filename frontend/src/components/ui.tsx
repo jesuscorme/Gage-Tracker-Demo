@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { STATUS_TONE } from "@/lib/status";
@@ -309,6 +309,189 @@ export function Pagination({ page, pageSize, total, onPage }: {
           {t("common.next")} ›
         </Button>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- generic badges, tabs, KPI
+
+export type Tone = "ok" | "warn" | "bad" | "block" | "info" | "mute";
+
+export function ToneBadge({ tone, children }: { tone: Tone; children: React.ReactNode }) {
+  return (
+    <span className={cx("inline-flex items-center gap-1.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide", TONE_CLASS[tone])}>
+      <span className={cx("inline-block size-1.5 rounded-[1px]", DOT_CLASS[tone])} />
+      {children}
+    </span>
+  );
+}
+
+export function Tabs<T extends string>({ value, onChange, items }: {
+  value: T;
+  onChange: (v: T) => void;
+  items: { value: T; label: React.ReactNode; count?: number }[];
+}) {
+  return (
+    <div role="tablist" className="mb-4 flex gap-1 overflow-x-auto border-b border-line">
+      {items.map((it) => (
+        <button
+          key={it.value}
+          role="tab"
+          aria-selected={value === it.value}
+          onClick={() => onChange(it.value)}
+          className={cx(
+            "-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-[13px] font-medium",
+            value === it.value ? "border-accent text-ink" : "border-transparent text-ink-3 hover:text-ink",
+          )}
+        >
+          {it.label}
+          {it.count !== undefined && <span className="ml-1.5 rounded bg-line-2 px-1.5 text-[11px] tabular text-ink-2">{it.count}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function KpiTile({ label, value, sub, tone, href }: {
+  label: string;
+  value: React.ReactNode;
+  sub?: React.ReactNode;
+  tone?: Tone;
+  href?: string;
+}) {
+  const body = (
+    <>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-3">{label}</div>
+      <div className={cx("mt-1.5 tabular text-2xl font-semibold", tone && value !== 0 && { ok: "text-ok", warn: "text-warn", bad: "text-bad", block: "text-block", info: "text-info", mute: "text-mute" }[tone])}>
+        {value}
+      </div>
+      {sub && <div className="mt-0.5 text-[12px] text-ink-3">{sub}</div>}
+    </>
+  );
+  const cls = cx("block rounded-lg border bg-surface p-4", tone && value !== 0 && tone !== "ok" ? "border-l-4" : "border-line",
+    tone && value !== 0 && { warn: "border-warn/40 border-l-warn", bad: "border-bad/40 border-l-bad", block: "border-block/40 border-l-block", info: "border-info/40 border-l-info", mute: "border-line", ok: "border-line" }[tone]);
+  return href ? <Link href={href} className={cx(cls, "hover:border-accent/40")}>{body}</Link> : <div className={cls}>{body}</div>;
+}
+
+export function Check({ label, checked, onChange, disabled }: {
+  label: React.ReactNode;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="flex items-center gap-1.5 text-[13px] text-ink-2">
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+      {label}
+    </label>
+  );
+}
+
+export function FileInput({ onFile, accept, label }: { onFile: (f: File | null) => void; accept?: string; label?: string }) {
+  return (
+    <input
+      type="file"
+      accept={accept}
+      aria-label={label}
+      onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+      className="block w-full text-[12px] text-ink-2 file:mr-3 file:h-8 file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:text-[12px] file:font-medium file:text-ink hover:file:bg-line-2"
+    />
+  );
+}
+
+/** Modal that asks for a (required) reason or comment and runs an action. */
+export function ReasonDialog({ open, title, label, onClose, onConfirm, danger, required = true, children }: {
+  open: boolean;
+  title: string;
+  label: string;
+  onClose: () => void;
+  onConfirm: (reason: string) => Promise<unknown>;
+  danger?: boolean;
+  required?: boolean;
+  children?: React.ReactNode;
+}) {
+  const { t } = useI18n();
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const close = () => {
+    setReason("");
+    setError(null);
+    onClose();
+  };
+  return (
+    <Modal
+      open={open}
+      onClose={close}
+      title={title}
+      footer={
+        <>
+          <Button onClick={close}>{t("common.cancel")}</Button>
+          <Button
+            variant={danger ? "danger" : "primary"}
+            loading={busy}
+            disabled={required && reason.trim().length < 3}
+            onClick={async () => {
+              setBusy(true);
+              setError(null);
+              try {
+                await onConfirm(reason.trim());
+                setReason("");
+                onClose();
+              } catch (err) {
+                setError(errorText(t, err));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {t("common.confirm")}
+          </Button>
+        </>
+      }
+    >
+      {error && <Alert>{error}</Alert>}
+      {children}
+      <Field label={label} required={required}>
+        <Textarea autoFocus maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </Field>
+    </Modal>
+  );
+}
+
+/** Runs async actions with a shared busy flag and error message. */
+export function useAction() {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const run = useCallback(
+    async (key: string, fn: () => Promise<unknown>, after?: () => void) => {
+      setBusy(key);
+      setError(null);
+      try {
+        await fn();
+        after?.();
+        return true;
+      } catch (err) {
+        setError(errorText(t, err));
+        return false;
+      } finally {
+        setBusy(null);
+      }
+    },
+    [t],
+  );
+  return { busy, error, setError, run };
+}
+
+export function Section({ title, children, actions }: { title: string; children: React.ReactNode; actions?: React.ReactNode }) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-3">{title}</h3>
+        {actions}
+      </div>
+      {children}
     </div>
   );
 }

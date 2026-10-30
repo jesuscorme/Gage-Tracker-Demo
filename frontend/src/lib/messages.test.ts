@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { en, es, format } from "./messages";
+import { en as enBase, es as esBase, format } from "./messages";
+import { enModules, esModules } from "./messages-modules";
+
+const es = { ...esBase, ...esModules };
+const en = { ...enBase, ...enModules };
 
 describe("messages", () => {
   it("has the same keys in both languages and no empty strings", () => {

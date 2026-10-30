@@ -6,7 +6,9 @@ export type GageStatus =
   | "IN_CALIBRATION"
   | "INACTIVE";
 
-export type ControlStatus = "ACTIVE" | "OUT_OF_SERVICE" | "IN_CALIBRATION" | "INACTIVE";
+export * from "./types-modules";
+
+export type ControlStatus ="ACTIVE" | "OUT_OF_SERVICE" | "IN_CALIBRATION" | "INACTIVE";
 
 export interface Ref {
   id: string;
@@ -73,8 +75,11 @@ export interface Gage {
   criticality: "LOW" | "MEDIUM" | "HIGH" | null;
   location: string | null;
   notes: string | null;
+  acquisition_date: string | null;
+  in_service_date: string | null;
   calibration_frequency_days: number;
   last_calibration_date: string | null;
+  last_verification_date: string | null;
   next_due_date: string | null;
   days_to_due: number | null;
   control_status: ControlStatus;

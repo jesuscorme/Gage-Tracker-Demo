@@ -29,7 +29,9 @@ def test_cannot_read_update_or_transition_other_tenant_gage(two_orgs):
     gid = a.gage["id"]
     for r in (
         b.get(f"/api/v1/gages/{gid}"),
-        b.patch(f"/api/v1/gages/{gid}", json={"location": "hijacked"}),
+        b.patch(f"/api/v1/gages/{gid}", json={"notes": "hijacked"}),
+        b.post(f"/api/v1/gages/{gid}/transfer", json={"location": "hijacked", "reason": "steal"}),
+        b.get(f"/api/v1/gages/{gid}/movements"),
         b.post(f"/api/v1/gages/{gid}/transitions", json={"target": "INACTIVE", "reason": "delete"}),
         b.get(f"/api/v1/gages/{gid}/status-history"),
         b.get(f"/api/v1/gages/{gid}/audit"),
@@ -117,6 +119,7 @@ def test_plant_scope_restricts_within_organization(client, make_org, gage_type, 
                                          "plant_id": p2["id"]})
     assert r.status_code == 404
     p1_gage = tech.get("/api/v1/gages").json()["items"][0]
-    r = tech.patch(f"/api/v1/gages/{p1_gage['id']}", json={"plant_id": p2["id"]})
+    manager = add_user(admin, "metrology_manager", plant_ids=[admin.plant_id])
+    r = manager.post(f"/api/v1/gages/{p1_gage['id']}/transfer", json={"plant_id": p2["id"], "reason": "move"})
     assert r.status_code == 404  # cannot move a gage into a plant outside the user's scope
     assert tech.get("/api/v1/dashboard/summary").json()["total_in_service"] == 1

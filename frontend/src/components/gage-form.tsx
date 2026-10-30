@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { useResource } from "@/lib/hooks";
+import { localToday, useResource } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import type { Department, Gage, GageType, OrgUser, Plant } from "@/lib/types";
 import { Alert, Button, Card, Field, Input, Select, Textarea, errorText } from "./ui";
@@ -12,11 +12,14 @@ import { Alert, Button, Card, Field, Input, Select, Textarea, errorText } from "
 type FormState = Record<
   | "gage_code" | "description" | "gage_type_id" | "plant_id" | "department_id" | "manufacturer" | "model"
   | "serial_number" | "range_min" | "range_max" | "unit" | "resolution" | "accuracy" | "criticality"
-  | "location" | "responsible_user_id" | "calibration_frequency_days" | "last_calibration_date" | "notes",
+  | "location" | "responsible_user_id" | "calibration_frequency_days" | "last_calibration_date" | "notes"
+  | "acquisition_date" | "in_service_date",
   string
 >;
 
 const NUMERIC = new Set(["range_min", "range_max", "resolution"]);
+// Changed through their own controlled operations once the gage exists.
+const CREATE_ONLY = new Set(["gage_code", "plant_id", "department_id", "location", "responsible_user_id", "last_calibration_date"]);
 const INTEGER = new Set(["calibration_frequency_days"]);
 
 function fromGage(g?: Gage): FormState {
@@ -40,6 +43,8 @@ function fromGage(g?: Gage): FormState {
     calibration_frequency_days: g ? String(g.calibration_frequency_days) : "",
     last_calibration_date: g?.last_calibration_date ?? "",
     notes: g?.notes ?? "",
+    acquisition_date: g?.acquisition_date ?? "",
+    in_service_date: g?.in_service_date ?? "",
   };
 }
 
@@ -82,7 +87,7 @@ export function GageForm({ gage }: { gage?: Gage }) {
       if (editing) {
         const changes: Record<string, unknown> = {};
         for (const k of Object.keys(form) as (keyof FormState)[]) {
-          if (k === "gage_code") continue;
+          if (CREATE_ONLY.has(k)) continue;
           if (form[k] !== initial[k]) changes[k] = toPayload(k, form[k]);
         }
         saved = Object.keys(changes).length ? await api.patch<Gage>(`/gages/${gage.id}`, changes) : gage;
@@ -172,10 +177,10 @@ export function GageForm({ gage }: { gage?: Gage }) {
         </div>
       </Card>
 
-      <Card title={t("gage.section.assignment")}>
+      <Card title={t("gage.section.assignment")} actions={editing && <span className="text-[12px] text-ink-3">🔒 {t("gage.transfer")}</span>}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label={t("gage.field.plant")} required>
-            <Select required value={form.plant_id} onChange={set("plant_id")}>
+            <Select required disabled={editing} value={form.plant_id} onChange={set("plant_id")}>
               <option value="" />
               {plants.data?.filter((p) => p.is_active || p.id === form.plant_id).map((p) => (
                 <option key={p.id} value={p.id}>{p.code} — {p.name}</option>
@@ -183,7 +188,7 @@ export function GageForm({ gage }: { gage?: Gage }) {
             </Select>
           </Field>
           <Field label={t("gage.field.department")}>
-            <Select value={form.department_id} onChange={set("department_id")} disabled={!form.plant_id}>
+            <Select value={form.department_id} onChange={set("department_id")} disabled={editing || !form.plant_id}>
               <option value="">—</option>
               {deptOptions.map((d) => (
                 <option key={d.id} value={d.id}>{d.code} — {d.name}</option>
@@ -191,10 +196,10 @@ export function GageForm({ gage }: { gage?: Gage }) {
             </Select>
           </Field>
           <Field label={t("gage.field.location")}>
-            <Input maxLength={200} value={form.location} onChange={set("location")} />
+            <Input maxLength={200} disabled={editing} value={form.location} onChange={set("location")} />
           </Field>
           <Field label={t("gage.field.responsible")}>
-            <Select value={form.responsible_user_id} onChange={set("responsible_user_id")}>
+            <Select disabled={editing} value={form.responsible_user_id} onChange={set("responsible_user_id")}>
               <option value="">—</option>
               {users.data?.filter((u) => u.is_active).map((u) => (
                 <option key={u.id} value={u.id}>{u.full_name}</option>
@@ -225,15 +230,21 @@ export function GageForm({ gage }: { gage?: Gage }) {
               onChange={set("calibration_frequency_days")}
             />
           </Field>
-          <Field label={t("gage.field.lastCalibration")}>
+          <Field label={t("gage.field.lastCalibration")} hint={!editing ? t("gage.initialCalibrationHint") : undefined}>
             <Input
               type="date"
               className="font-mono"
-              disabled={!canMoveDueDate}
-              max={new Date().toISOString().slice(0, 10)}
+              disabled={editing}
+              max={localToday()}
               value={form.last_calibration_date}
               onChange={set("last_calibration_date")}
             />
+          </Field>
+          <Field label={t("gage.field.acquisition")}>
+            <Input type="date" className="font-mono" max={localToday()} value={form.acquisition_date} onChange={set("acquisition_date")} />
+          </Field>
+          <Field label={t("gage.field.inService")}>
+            <Input type="date" className="font-mono" max={localToday()} value={form.in_service_date} onChange={set("in_service_date")} />
           </Field>
         </div>
         {editing && !canMoveDueDate && <p className="mt-3 text-[12px] text-ink-3">🔒 {t("gage.restrictedFields")}</p>}

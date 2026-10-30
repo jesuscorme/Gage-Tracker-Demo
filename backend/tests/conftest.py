@@ -7,6 +7,7 @@ database. Each test runs inside a transaction that is rolled back afterwards.
 """
 
 import os
+import tempfile
 import uuid
 from datetime import UTC, datetime
 
@@ -21,6 +22,7 @@ os.environ["APP_ENV"] = "test"
 os.environ["LOG_JSON"] = "false"
 os.environ["LOG_LEVEL"] = "WARNING"
 os.environ["BCRYPT_ROUNDS"] = "4"
+os.environ["STORAGE_DIR"] = tempfile.mkdtemp(prefix="gt-test-storage-")
 
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402
@@ -99,6 +101,9 @@ class Actor:
     def post(self, url, json=None, **kw):
         return self.client.post(url, json=json, headers=self.headers, **kw)
 
+    def put(self, url, json=None, **kw):
+        return self.client.put(url, json=json, headers=self.headers, **kw)
+
     def patch(self, url, json=None, **kw):
         return self.client.patch(url, json=json, headers=self.headers, **kw)
 
@@ -166,3 +171,21 @@ def new_gage():
         return r.json()
 
     return _make
+
+
+# A minimal but well-formed PDF (magic bytes are what the upload validator checks).
+PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+PNG = b"\x89PNG\r\n\x1a\n" + bytes(32)
+
+
+@pytest.fixture()
+def authorize():
+    """Grant a current authorization (by the admin) to a user for an activity."""
+
+    def _grant(admin: Actor, user_id: str, activity: str, **scope) -> dict:
+        r = admin.post("/api/v1/competency/authorizations", json={
+            "user_id": user_id, "activity": activity, "valid_from": today().isoformat(), **scope})
+        assert r.status_code == 201, r.text
+        return r.json()
+
+    return _grant

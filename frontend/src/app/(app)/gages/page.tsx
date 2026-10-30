@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { DueCell } from "@/components/gage-bits";
+import { Icon } from "@/components/icons";
 import {
   Button, Card, EmptyState, ErrorState, Input, LinkButton, Loading, PageHeader, Pagination, Select, StatusBadge,
 } from "@/components/ui";
@@ -72,7 +73,15 @@ function GageList() {
     <>
       <PageHeader
         title={t("gages.title")}
-        actions={can("gages:create") && <LinkButton href="/gages/new" variant="primary">+ {t("gages.new")}</LinkButton>}
+        actions={
+          <>
+            <Button onClick={() => api.download("/gages/export", { format: "xlsx", q, status, plant_id: plant, gage_type_id: type, available, include_inactive: includeInactive })}>
+              <Icon name="download" size={14} /> {t("common.export")}
+            </Button>
+            {can("gages:import") && <LinkButton href="/gages/import"><Icon name="upload" size={14} /> {t("common.import")}</LinkButton>}
+            {can("gages:create") && <LinkButton href="/gages/new" variant="primary">+ {t("gages.new")}</LinkButton>}
+          </>
+        }
       />
 
       <Card flush>

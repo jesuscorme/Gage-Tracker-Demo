@@ -17,6 +17,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base, TimestampMixin
@@ -81,11 +82,15 @@ class Gage(TimestampMixin, Base):
     criticality: Mapped[str | None] = mapped_column(String(10))
     location: Mapped[str | None] = mapped_column(String(200))
     notes: Mapped[str | None] = mapped_column(Text)
+    acquisition_date: Mapped[date | None] = mapped_column(Date)
+    in_service_date: Mapped[date | None] = mapped_column(Date)
 
     calibration_frequency_days: Mapped[int] = mapped_column(Integer)
     last_calibration_date: Mapped[date | None] = mapped_column(Date)
     # Derived (last_calibration_date + frequency); stored so it can be indexed and sorted.
     next_due_date: Mapped[date | None] = mapped_column(Date)
+    # Routine verifications do not move the calibration due date; tracked separately.
+    last_verification_date: Mapped[date | None] = mapped_column(Date)
 
     # Workflow-controlled part of the status; Calibrated/Due Soon/Overdue are derived.
     control_status: Mapped[str] = mapped_column(String(20), default="ACTIVE", server_default="ACTIVE")
@@ -116,3 +121,18 @@ class GageStatusHistory(Base):
     reason: Mapped[str | None] = mapped_column(String(1000))
     changed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
     changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.clock_timestamp())
+
+
+class GageMovement(Base):
+    """Reassignment / transfer history (append-only): who had the gage and where it was."""
+
+    __tablename__ = "gage_movements"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="RESTRICT"))
+    gage_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("gages.id", ondelete="RESTRICT"), index=True)
+    # {field: [from, to]} for plant/department/location/responsible, with readable labels.
+    changes: Mapped[dict] = mapped_column(JSONB)
+    reason: Mapped[str] = mapped_column(String(1000))
+    moved_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    moved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.clock_timestamp())

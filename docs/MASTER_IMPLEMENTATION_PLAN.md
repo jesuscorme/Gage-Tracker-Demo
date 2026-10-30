@@ -12,14 +12,39 @@
 
 ## Estado de implementación
 
-**Última actualización:** 2026-10-29 · **Avance global estimado:** ≈ 18 % · Detalle: `docs/PROGRESS_REPORT_01.md`
+**Última actualización:** 2026-10-30 · **Avance global estimado:** ≈ 45 % · Detalle: `docs/PROGRESS_REPORT_02.md` (bloque 2) y `docs/PROGRESS_REPORT_01.md` (bloque 1)
 
-| Fase | Estado | Terminado | Parcial / pendiente |
-|---|---|---|---|
-| 0 · Descubrimiento | ✅ Terminada | Línea base, ADRs, roadmap | — |
-| 1 · Fundaciones | ✅ Terminada (con pendientes no bloqueantes) | Monolito modular, config por ambiente, PostgreSQL + Alembic, Organization/Plant/Department/User, RBAC (13 permisos, 5 roles), auth JWT, contexto multi-tenant + alcance por planta, audit trail append-only, errores centralizados, logging JSON, health checks, layout/navegación, selector ES/EN, Docker (sin probar), docs de instalación | OIDC, rate limiting, cookie httpOnly, RLS, validar Docker |
-| 2 · Gage Management | 🟡 Parcial (~65 %) | Catálogo de tipos, CRUD con baja lógica, Gage ID único por organización, especificaciones, asignación, frecuencia/fechas, 6 estados con reglas y liberación autorizada, búsqueda/filtros, expediente, historial de estado, auditoría, dashboard inicial | Documentos/adjuntos, exportación, unicidad configurable, asignaciones, vistas guardadas, concurrencia optimista, revisión de cierre |
-| 3 – 12 | ⏳ No iniciadas | — | — |
+| Fase | Funcionalidad | Estado | Evidencia | Pendientes |
+|---|---|---|---|---|
+| 0 | Línea base, ADRs, roadmap | COMPLETADO | `docs/PROJECT_BASELINE.md`, `ARCHITECTURE_DECISIONS.md` | — |
+| 1 | Organizaciones, plantas, usuarios, auth JWT | COMPLETADO | `test_platform.py` (13) | OIDC, rate limiting, cookie httpOnly |
+| 1 | RBAC (35 permisos, 7 roles) | COMPLETADO | `test_rbac.py` (18, matriz por rol) | Roles personalizados (Fase 9) |
+| 1 | Multi-tenant + alcance por planta | COMPLETADO | `test_tenant_isolation.py` (9) + pruebas de aislamiento por módulo | RLS en BD |
+| 1 | Audit trail inmutable, logging, health | COMPLETADO | triggers append-only probados | — |
+| 1 | Docker | PARCIAL | Archivos escritos | No probado (sin Docker en el equipo) |
+| 2 | Expediente completo (fechas, fotos, documentos) | COMPLETADO | `test_gage_completion.py`, E2E bloque 2 | — |
+| 2 | Estados controlados y calculados | COMPLETADO | `test_gage_status.py` (20), `test_gages.py` (20) | — |
+| 2 | Transferencia/reasignación con historial | COMPLETADO | `test_transfer_*`, E2E | — |
+| 2 | Importación CSV/XLSX y exportación | COMPLETADO | `test_import_*`, `test_export_*`, E2E | — |
+| 2 | Unicidad de Gage ID configurable | PENDIENTE | — | Hoy fija por organización |
+| 3 | Tipos de actividad configurables | COMPLETADO | `test_disabled_activity_type_*` | — |
+| 3 | Flujo plan→solicitud→programación→ejecución→revisión→aprobación→liberación | COMPLETADO | `test_calibration.py` (16), E2E | — |
+| 3 | As Found / As Left separados e inmutables | COMPLETADO | `test_as_found_*`, `test_point_corrections_*` | — |
+| 3 | Certificados PDF sin reemplazo silencioso | COMPLETADO | `test_approved_certificate_*` | — |
+| 3 | Liberación transaccional al expediente | COMPLETADO | `test_internal_calibration_end_to_end_*`, `test_failed_*` | — |
+| 3 | Calendario y panel de vencimientos | COMPLETADO | `test_calendar_overview_*`, E2E | — |
+| 3 | Notificaciones | PARCIAL | En la app con preferencias | Correo y alertas programadas |
+| 4 | Patrones, certificados, vigencia, uso con instantánea | COMPLETADO | `test_standards_competency.py`, `test_expired_standard_*` | Uso de patrones en OT de laboratorio |
+| 4 | Perfiles, competencias, matriz, autorizaciones | COMPLETADO | `test_competency_records_*`, `test_authorization_scope_*` | Anulación de registros con motivo |
+| 4 | Validación de autorización en calibración y laboratorio | COMPLETADO | `test_unauthorized_*`, `test_segregation_*`, `test_scheduling_*` | — |
+| 5 | Solicitudes de servicio | COMPLETADO | `test_request_lifecycle_*` | Cotización |
+| 5 | Programación con reglas de compatibilidad | COMPLETADO | `test_scheduling_rejects_incompatible_assignments` | Capacidad por equipo/recurso, Gantt |
+| 5 | OT, captura dimensional, correcciones | COMPLETADO | `test_execution_capture_*`, `test_measurement_with_unavailable_gage_*` | QR/código de barras |
+| 5 | Informes PDF con revisiones | COMPLETADO | `test_execution_capture_*` (PDF descargado) | — |
+| 5 | KPIs operativos reales | COMPLETADO | `test_rejected_report_and_dashboard_kpis` | — |
+| 6–12 | MSA, OOT, integraciones, configuración, producción | PENDIENTE | — | Siguiente bloque: MSA + motor estadístico + OOT |
+
+Resultados de la última corrida: backend 118/118, frontend 6/6, `tsc` y `next build` OK, E2E navegador 13/13 (regresión) y 9/9 (bloque 2).
 
 ---
 

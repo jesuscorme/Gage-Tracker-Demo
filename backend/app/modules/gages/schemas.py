@@ -41,11 +41,9 @@ class GageTypeOut(BaseModel):
 # ---------------------------------------------------------------- gages
 
 
-class _GageFields(BaseModel):
+class _Descriptive(BaseModel):
     description: str | None = Field(default=None, min_length=2, max_length=300)
     gage_type_id: uuid.UUID | None = None
-    plant_id: uuid.UUID | None = None
-    department_id: uuid.UUID | None = None
     manufacturer: str | None = Field(default=None, max_length=120)
     model: str | None = Field(default=None, max_length=120)
     serial_number: str | None = Field(default=None, max_length=120)
@@ -55,38 +53,79 @@ class _GageFields(BaseModel):
     resolution: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=6)
     accuracy: str | None = Field(default=None, max_length=120)
     criticality: Criticality | None = None
-    location: str | None = Field(default=None, max_length=200)
-    responsible_user_id: uuid.UUID | None = None
     calibration_frequency_days: int | None = Field(default=None, ge=1, le=3650)
-    last_calibration_date: date | None = None
+    acquisition_date: date | None = None
+    in_service_date: date | None = None
     notes: str | None = Field(default=None, max_length=4000)
 
     @model_validator(mode="after")
     def _range_order(self):
         if self.range_min is not None and self.range_max is not None and self.range_min > self.range_max:
             raise ValueError("range_min must be less than or equal to range_max")
+        if self.acquisition_date and self.in_service_date and self.in_service_date < self.acquisition_date:
+            raise ValueError("in_service_date cannot be earlier than acquisition_date")
         return self
 
 
-class GageCreate(_GageFields):
+class GageCreate(_Descriptive):
     gage_code: str = Field(min_length=1, max_length=50, pattern=GAGE_CODE_PATTERN)
     description: str = Field(min_length=2, max_length=300)
     gage_type_id: uuid.UUID
     plant_id: uuid.UUID
+    department_id: uuid.UUID | None = None
+    location: str | None = Field(default=None, max_length=200)
+    responsible_user_id: uuid.UUID | None = None
+    # Initial record of the last calibration (legacy inventory). After registration the
+    # date only changes through a released calibration activity.
+    last_calibration_date: date | None = None
 
 
-class GageUpdate(_GageFields):
-    """Partial update. The Gage ID and the controlled status cannot be changed here."""
+class GageUpdate(_Descriptive):
+    """Descriptive data only. Gage ID, status, assignment and calibration dates are
+    changed through their own controlled operations."""
 
     model_config = ConfigDict(extra="forbid")
 
 
+class GageTransferIn(BaseModel):
+    """Reassignment of responsible and/or transfer to another plant, department or location."""
+
+    model_config = ConfigDict(extra="forbid")
+    plant_id: uuid.UUID | None = None
+    department_id: uuid.UUID | None = None
+    location: str | None = Field(default=None, max_length=200)
+    responsible_user_id: uuid.UUID | None = None
+    reason: str = Field(min_length=3, max_length=1000)
+
+
 class GageTransitionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     target: ControlStatus
     reason: str = Field(min_length=3, max_length=1000)
-    # Only when releasing from IN_CALIBRATION. Interim until Calibration Management (phase 3)
-    # records calibrations as activities with evidence.
-    calibration_date: date | None = None
+
+
+class MovementOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    changes: dict
+    reason: str
+    moved_by: uuid.UUID
+    moved_by_name: str | None = None
+    moved_at: datetime
+
+
+class ImportRowError(BaseModel):
+    row: int
+    gage_code: str | None
+    errors: list[str]
+
+
+class ImportResult(BaseModel):
+    dry_run: bool
+    total_rows: int
+    valid_rows: int
+    created: int
+    errors: list[ImportRowError]
 
 
 class Ref(BaseModel):
@@ -121,8 +160,11 @@ class GageOut(BaseModel):
     criticality: str | None
     location: str | None
     notes: str | None
+    acquisition_date: date | None
+    in_service_date: date | None
     calibration_frequency_days: int
     last_calibration_date: date | None
+    last_verification_date: date | None
     next_due_date: date | None
     days_to_due: int | None
     control_status: ControlStatus

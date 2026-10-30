@@ -23,3 +23,6 @@ next-env.d.ts
 Thumbs.db
 .vscode/
 .idea/
+
+# Uploaded documents in local development
+backend/var/

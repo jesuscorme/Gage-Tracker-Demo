@@ -1,19 +1,27 @@
 import uuid
+from typing import Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi.responses import Response
 from sqlalchemy import select
 
+from app.core.errors import BusinessRuleError
 from app.modules.audit.router import AuditPage, query_events
+from app.modules.documents import service as documents
+from app.modules.gages import io as gage_io
 from app.modules.gages import service
 from app.modules.gages.schemas import (
     GageCreate,
     GageOut,
     GagePage,
+    GageTransferIn,
     GageTransitionIn,
     GageTypeIn,
     GageTypeOut,
     GageTypeUpdate,
     GageUpdate,
+    ImportResult,
+    MovementOut,
     StatusHistoryOut,
 )
 from app.modules.gages.status import GageStatus
@@ -22,6 +30,8 @@ from app.modules.identity.models import User
 from app.modules.identity.permissions import P
 
 router = APIRouter(tags=["gages"])
+
+documents.register("gage", P.GAGES_READ, P.GAGES_UPDATE, lambda ctx, i: service.get_gage(ctx, i))
 
 
 # ---------------------------------------------------------------- gage types
@@ -44,6 +54,54 @@ def update_gage_type(type_id: uuid.UUID, body: GageTypeUpdate,
 
 
 # ---------------------------------------------------------------- gages
+
+
+class _Filters:
+    def __init__(
+        self,
+        q: str | None = Query(None, max_length=100),
+        status: list[GageStatus] | None = Query(None),
+        plant_id: uuid.UUID | None = None,
+        department_id: uuid.UUID | None = None,
+        gage_type_id: uuid.UUID | None = None,
+        available: bool | None = None,
+        include_inactive: bool = False,
+        sort: str = "gage_code",
+    ):
+        self.kw = dict(q=q, statuses=status, plant_id=plant_id, department_id=department_id,
+                       gage_type_id=gage_type_id, available=available, include_inactive=include_inactive, sort=sort)
+
+
+@router.get("/gages/export")
+def export_gages(
+    format: Literal["csv", "xlsx"] = "xlsx",
+    f: _Filters = Depends(),
+    ctx: TenantContext = Depends(require(P.GAGES_READ)),
+):
+    """Inventory export with the same filters as the list (scope-limited)."""
+    rows, _ = service.list_gages(ctx, **f.kw, page=1, page_size=50_000)
+    content, media, filename = gage_io.export(ctx, rows, format)
+    ctx.audit(action="gage.exported", entity_type="gage_export", changes={"format": format, "rows": len(rows)})
+    ctx.db.commit()
+    return Response(content, media_type=media, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+@router.get("/gages/import/template")
+def import_template(ctx: TenantContext = Depends(require(P.GAGES_IMPORT))):
+    return Response(gage_io.template_csv(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": 'attachment; filename="gage-import-template.csv"'})
+
+
+@router.post("/gages/import", response_model=ImportResult)
+async def import_gages(
+    file: UploadFile = File(...),
+    dry_run: bool = Query(False),
+    ctx: TenantContext = Depends(require(P.GAGES_IMPORT, P.GAGES_CREATE)),
+):
+    data = await file.read()
+    if len(data) > 10 * 1024 * 1024:
+        raise BusinessRuleError("Import file exceeds 10 MB", code="file_too_large")
+    return gage_io.import_gages(ctx, file.filename or "import.csv", data, dry_run)
 
 
 @router.get("/gages", response_model=GagePage)
@@ -81,6 +139,20 @@ def get_gage(gage_id: uuid.UUID, ctx: TenantContext = Depends(require(P.GAGES_RE
 @router.patch("/gages/{gage_id}", response_model=GageOut)
 def update_gage(gage_id: uuid.UUID, body: GageUpdate, ctx: TenantContext = Depends(require(P.GAGES_UPDATE))):
     return service.to_out(ctx, service.update_gage(ctx, gage_id, body))
+
+
+@router.post("/gages/{gage_id}/transfer", response_model=GageOut)
+def transfer_gage(gage_id: uuid.UUID, body: GageTransferIn, ctx: TenantContext = Depends(require(P.GAGES_TRANSFER))):
+    """Reassign responsible and/or move to another plant, department or location."""
+    return service.to_out(ctx, service.transfer_gage(ctx, gage_id, body))
+
+
+@router.get("/gages/{gage_id}/movements", response_model=list[MovementOut])
+def gage_movements(gage_id: uuid.UUID, ctx: TenantContext = Depends(require(P.GAGES_READ))):
+    rows = service.movements(ctx, gage_id)
+    ids = {r.moved_by for r in rows}
+    names = {i: n for i, n in ctx.db.execute(select(User.id, User.full_name).where(User.id.in_(ids)))} if ids else {}
+    return [MovementOut.model_validate(r).model_copy(update={"moved_by_name": names.get(r.moved_by)}) for r in rows]
 
 
 @router.post("/gages/{gage_id}/transitions", response_model=GageOut)

@@ -18,6 +18,16 @@ const P = {
   logout: "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11",
   back: "M15 6l-6 6 6 6",
   lock: "M6 11h12v9H6zM8 11V8a4 4 0 018 0v3",
+  calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
+  bell: "M6 16V11a6 6 0 0112 0v5l2 2H4zM10 20a2 2 0 004 0",
+  people: "M9 11a4 4 0 100-8 4 4 0 000 8zM2 21v-1a6 6 0 0112 0v1M17 11l2 2 4-4",
+  inbox: "M4 13l2-8h12l2 8M4 13v6h16v-6M4 13h5l1 2h4l1-2h5",
+  board: "M4 4h16v16H4zM9 4v16M15 4v16",
+  wrench: "M14 6a4 4 0 015 5l-9 9-3-3 9-9a4 4 0 01-2-2zM5 19l-1 1",
+  file: "M6 3h8l4 4v14H6zM14 3v4h4M9 13h6M9 17h6",
+  gear: "M12 15a3 3 0 100-6 3 3 0 000 6zM19 12l2-1-1-3-2 .5-1.5-1.5.5-2-3-1-1 2h-2l-1-2-3 1 .5 2L6 7.5 4 7 3 10l2 1v2l-2 1 1 3 2-.5L7.5 18 7 20l3 1 1-2h2l1 2 3-1-.5-2 1.5-1.5 2 .5 1-3-2-1z",
+  upload: "M12 16V4M7 9l5-5 5 5M4 20h16",
+  download: "M12 4v12M7 11l5 5 5-5M4 20h16",
 } as const;
 
 export type IconName = keyof typeof P;

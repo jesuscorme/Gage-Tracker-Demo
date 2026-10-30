@@ -1,4 +1,5 @@
 // UI strings. `en` is typed against `es`, so a missing key fails type-checking.
+import type { ModuleKey } from "./messages-modules";
 
 export const es = {
   "app.name": "Gage Tracker",
@@ -145,7 +146,7 @@ export const es = {
   "gage.criticality.LOW": "Baja",
   "gage.criticality.MEDIUM": "Media",
   "gage.criticality.HIGH": "Alta",
-  "gage.restrictedFields": "Solo usuarios con autorización de liberación pueden modificar la fecha de calibración o la frecuencia.",
+  "gage.restrictedFields": "Solo usuarios con autorización de liberación pueden modificar la frecuencia de calibración.",
   "gage.retiredNotice": "Instrumento dado de baja el {date}. Reactívalo para poder editarlo.",
   "gage.create.title": "Registrar instrumento",
   "gage.edit.title": "Editar instrumento",
@@ -201,9 +202,10 @@ export const es = {
   "audit.empty": "No hay eventos.",
 };
 
-export type MessageKey = keyof typeof es;
+export type BaseKey = keyof typeof es;
+export type MessageKey = BaseKey | ModuleKey;
 
-export const en: Record<MessageKey, string> = {
+export const en: Record<BaseKey, string> = {
   "app.name": "Gage Tracker",
   "app.tagline": "Metrology Management System",
 
@@ -348,7 +350,7 @@ export const en: Record<MessageKey, string> = {
   "gage.criticality.LOW": "Low",
   "gage.criticality.MEDIUM": "Medium",
   "gage.criticality.HIGH": "High",
-  "gage.restrictedFields": "Only users with release authorization can change the calibration date or frequency.",
+  "gage.restrictedFields": "Only users with release authorization can change the calibration frequency.",
   "gage.retiredNotice": "Gage retired on {date}. Reactivate it to edit.",
   "gage.create.title": "Register gage",
   "gage.edit.title": "Edit gage",

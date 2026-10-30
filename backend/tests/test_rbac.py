@@ -83,3 +83,31 @@ def test_user_management_is_audited(org, add_user):
     assert "user.added" in actions and "user.membership_updated" in actions
     changed = next(e for e in events if e["action"] == "user.membership_updated")
     assert changed["changes"]["role"] == ["metrology_technician", "viewer"]
+
+
+# Expected access to the new modules per role: (read standards, manage standards, read calibrations,
+# plan calibration, create lab request, manage lab services, grant authorizations, import gages)
+MODULE_MATRIX = {
+    "org_admin":            (True, True, True, True, True, True, True, True),
+    "metrology_manager":    (True, True, True, True, True, True, True, True),
+    "metrology_technician": (True, False, True, False, False, False, False, False),
+    "lab_technician":       (True, False, True, False, False, False, False, False),
+    "requester":            (False, False, False, False, True, False, False, False),
+    "auditor":              (True, False, True, False, False, False, False, False),
+    "viewer":               (True, False, True, False, False, False, False, False),
+}
+
+
+@pytest.mark.parametrize("role", list(MODULE_MATRIX))
+def test_module_permissions_by_role(org, add_user, role):
+    user = add_user(org, role) if role != "org_admin" else org
+    exp = MODULE_MATRIX[role]
+    ok = lambda r, allowed: r.status_code != 403 if allowed else r.status_code == 403  # noqa: E731
+    assert ok(user.get("/api/v1/standards"), exp[0])
+    assert ok(user.post("/api/v1/standards", json={}), exp[1])
+    assert ok(user.get("/api/v1/calibrations"), exp[2])
+    assert ok(user.post("/api/v1/calibrations", json={}), exp[3])
+    assert ok(user.post("/api/v1/lab/requests", json={}), exp[4])
+    assert ok(user.post("/api/v1/lab/services", json={}), exp[5])
+    assert ok(user.post("/api/v1/competency/authorizations", json={}), exp[6])
+    assert ok(user.get("/api/v1/gages/import/template"), exp[7])

@@ -4,14 +4,15 @@ Plataforma modular y multi-tenant para la gestión de instrumentos de medición 
 
 - **Backend:** Python 3.12 · FastAPI · SQLAlchemy 2 · Alembic · PostgreSQL 16
 - **Frontend:** Next.js 15 · React 19 · TypeScript · Tailwind CSS 4
-- **Estado:** Fases 0–1 completas, Fase 2 (Gage Management) en avance. Ver [docs/MASTER_IMPLEMENTATION_PLAN.md](docs/MASTER_IMPLEMENTATION_PLAN.md).
+- **Estado (≈ 45 %):** Plataforma, Gage Management, Calibration, Standards, Competency y Laboratory Operations funcionales. Ver [docs/MASTER_IMPLEMENTATION_PLAN.md](docs/MASTER_IMPLEMENTATION_PLAN.md) y [docs/PROGRESS_REPORT_02.md](docs/PROGRESS_REPORT_02.md).
 
 ## Estructura
 
 ```
 backend/            API FastAPI (monolito modular)
   app/core/         configuración, BD, errores, logging, seguridad
-  app/modules/      identity · organizations · audit · gages · dashboard · health
+  app/modules/      identity · organizations · audit · documents · gages · standards · competency
+                    calibration · laboratory · notifications · dashboard · health
   alembic/          migraciones versionadas
   tests/            pruebas unitarias e integración (PostgreSQL real)
 frontend/           Next.js (App Router)
@@ -53,6 +54,12 @@ el valor de `API_URL` se fija en tiempo de build.
 Abra http://localhost:3000/register para crear la primera organización (planta + administrador).
 No se cargan datos de ejemplo.
 
+**Arranque de una organización nueva:** crear tipos de instrumento → registrar usuarios con su rol →
+**otorgar autorizaciones** en *Competencias → Autorizaciones* (calibración interna, revisión técnica,
+aprobación, servicio de laboratorio, inspección dimensional) → registrar patrones con su certificado →
+dar de alta servicios del laboratorio en *Configuración técnica*. Sin autorizaciones vigentes el sistema
+no permite ejecutar, revisar ni aprobar actividades restringidas (comportamiento intencional).
+
 ## Ejecución con Docker
 
 ```bash
@@ -83,3 +90,5 @@ La suite de backend reconstruye el esquema en la BD de pruebas mediante las migr
 | `CORS_ORIGINS` | Orígenes permitidos (el frontend usa proxy same-origin) |
 | `ALLOW_SELF_REGISTRATION` | Permite crear organizaciones desde `/register` |
 | `LOG_LEVEL`, `LOG_JSON` | Logging estructurado |
+| `STORAGE_DIR` | Carpeta de documentos subidos (certificados, fotos, informes). Respaldar junto con la BD |
+| `MAX_UPLOAD_MB` | Tamaño máximo por archivo (default 20) |

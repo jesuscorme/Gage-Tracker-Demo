@@ -77,3 +77,46 @@ La regla existe en Python y como expresión SQL (para filtros/conteos); `tests/t
 **Contexto.** La máquina de desarrollo no tiene Docker y la instancia PostgreSQL existente usa credenciales no disponibles.
 **Decisión.** `scripts/dev-db.ps1` crea un cluster privado con los binarios de PostgreSQL 16 en `.local/pgdata` (puerto 5433, autenticación `trust` solo en localhost). `docker-compose.yml` expone la BD en el mismo puerto para que `.env` sea idéntico en ambos modos.
 **Consecuencias.** Solo para desarrollo; nunca usar `trust` en servidores compartidos.
+
+---
+
+# Segundo bloque (Fases 2–5)
+
+## ADR-012 · Documentos: metadatos en BD, binarios fuera, acceso por registro dueño
+
+Archivos validados por contenido (firma de bytes) y extensión: PDF, PNG, JPEG, WEBP, XLSX, CSV; máx. 20 MB (`MAX_UPLOAD_MB`). Se guardan con clave aleatoria y escritura exclusiva (`open(..., "x")`): no se sobrescriben. La tabla `attachments` guarda hash SHA-256, tamaño, tipo, autor. El permiso para ver/subir un archivo es el del registro al que pertenece (registro de tipos por módulo); fuera del tenant responde 404. El retiro es lógico con motivo; los documentos que respaldan registros aprobados (certificados, informes, evidencias liberadas) quedan **bloqueados**. Hoy el almacenamiento es disco local (`STORAGE_DIR`); la interfaz `LocalStorage.put/get` permite sustituirlo por S3-compatible.
+
+## ADR-013 · Asignación y fechas del instrumento por operaciones controladas
+
+- `PATCH /gages` solo cambia datos descriptivos (`extra="forbid"`).
+- Planta, departamento, ubicación y responsable se cambian con `/transfer` (permiso `gages:transfer`, motivo obligatorio, historial `gage_movements`).
+- `last_calibration_date` solo al alta/importación (registro inicial de inventario existente); después la actualiza **únicamente** la liberación de una calibración. Se retiró la fecha manual del primer bloque (ADR-006 actualizado).
+- Una calibración liberada más antigua que la última registrada no retrocede el vencimiento.
+
+## ADR-014 · Flujo de calibración, segregación de funciones y liberación transaccional
+
+Estados y permisos por etapa (`calibration:manage|execute|review|approve|release`). Además del permiso RBAC, ejecutar calibraciones internas/verificaciones, revisar y aprobar exige **autorización personal vigente** (ADR-016). Revisor ≠ ejecutor; aprobador ≠ ejecutor y ≠ revisor. Requisitos de evidencia configurables por tipo y planta (`calibration_settings`), revalidados al liberar. La liberación, la actualización del instrumento (fechas y estado), el historial de estado y la auditoría ocurren en **una sola transacción**. Resultado no conforme ⇒ instrumento Out of Service. La verificación de rutina registra `last_verification_date` y no mueve el vencimiento de calibración. Mientras una calibración retiene el instrumento (In Calibration), la liberación manual se bloquea (`release_guards`).
+
+## ADR-015 · Resultados de medición inmutables (sustitución)
+
+As Found / As Left y resultados dimensionales son filas nuevas; una corrección crea otra fila con `supersedes_id` y motivo, y marca la original como sustituida. Un trigger (`protect_measurement_row`) solo permite cambiar `superseded` de falso a verdadero; cualquier otra modificación o borrado falla en la base de datos.
+
+## ADR-016 · Autorizaciones de competencia como segunda llave
+
+Las autorizaciones (`authorizations`) son por persona, actividad (`INTERNAL_CALIBRATION`, `ROUTINE_VERIFICATION`, `TECHNICAL_REVIEW`, `APPROVAL`, `LAB_SERVICE`, `DIMENSIONAL_INSPECTION`, `MSA_EVALUATION`), con alcance opcional por tipo de instrumento y planta y vigencia. No se editan: se revocan con motivo y se otorgan de nuevo. `ensure_authorized` es la única verificación usada por Calibración y Laboratorio. Los requisitos normativos concretos (qué formación habilita qué actividad) **no** están codificados: los define el cliente al otorgar autorizaciones con su fundamento.
+
+## ADR-017 · Patrones: vigencia, excepción documentada e instantánea de uso
+
+Un patrón solo es utilizable si está Vigente o Por vencer en la fecha de ejecución. Otro estado exige motivo y permiso `standards:exception`; queda auditado en la actividad y en el patrón. Cada uso guarda estado, certificado y vigencia de ese momento, de modo que la trazabilidad no cambia aunque el patrón cambie después.
+
+## ADR-018 · Programación de laboratorio con reglas de compatibilidad
+
+La asignación de OT rechaza: técnico sin autorización vigente para el servicio, ausencias, traslape con otra OT del técnico, equipo no disponible, equipo que vence antes del fin del trabajo y equipo reservado en otra OT traslapada. Las mediciones solo se aceptan con equipo asignado y disponible en ese momento; el estado del equipo se guarda con cada medición. Los informes son instantáneas congeladas con PDF (fpdf2, fuentes Latin-1); la reemisión crea revisión nueva con motivo.
+
+## ADR-019 · Notificaciones en la aplicación y alertas calculadas
+
+Las notificaciones se crean en la misma transacción que el evento y respetan preferencias por usuario (opt-out). Las alertas (vencidos, por vencer, patrones, autorizaciones, OT atrasadas) se calculan al consultar, sin tareas programadas. Correo y tareas programadas quedan para la fase de integraciones.
+
+## ADR-020 · Numeración de documentos
+
+`CAL-AAAA-NNNNN`, `SR-…`, `WO-…`, `MR-…` por organización y año, con fila bloqueada (`code_sequences`), sin huecos por concurrencia.

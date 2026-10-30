@@ -74,35 +74,68 @@ function qs(query?: Query): string {
   return s ? `?${s}` : "";
 }
 
-async function request<T>(method: string, path: string, body?: unknown, query?: Query): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
   if (orgId) headers["X-Organization-Id"] = orgId;
+  return headers;
+}
 
-  let res: Response;
+async function send(method: string, path: string, body: BodyInit | undefined, extra: Record<string, string>, query?: Query) {
   try {
-    res = await fetch(`/api/v1${path}${qs(query)}`, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    return await fetch(`/api/v1${path}${qs(query)}`, { method, headers: { ...authHeaders(), ...extra }, body });
   } catch {
     throw new ApiError(0, "network_error", "Network error");
   }
+}
 
-  if (res.status === 204) return undefined as T;
+async function failure(res: Response): Promise<ApiError> {
   const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const err = data?.error ?? {};
-    if (res.status === 401 && token) onUnauthorized?.();
-    throw new ApiError(res.status, err.code ?? "http_error", err.message ?? res.statusText, err.details);
+  const err = data?.error ?? {};
+  if (res.status === 401 && token) onUnauthorized?.();
+  return new ApiError(res.status, err.code ?? "http_error", err.message ?? res.statusText, err.details);
+}
+
+async function request<T>(method: string, path: string, body?: unknown, query?: Query): Promise<T> {
+  const extra: Record<string, string> = { Accept: "application/json" };
+  if (body !== undefined && !(body instanceof FormData)) extra["Content-Type"] = "application/json";
+  const payload = body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body);
+  const res = await send(method, path, payload, extra, query);
+
+  if (!res.ok) throw await failure(res);
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+/** Fetch a protected file and hand it to the browser (open inline or save). */
+async function download(path: string, query?: Query, opts: { open?: boolean; filename?: string } = {}) {
+  const res = await send("GET", path, undefined, {}, query);
+  if (!res.ok) throw await failure(res);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const cd = res.headers.get("Content-Disposition") ?? "";
+  const name = opts.filename ?? decodeURIComponent(/filename\*=UTF-8''([^;]+)/.exec(cd)?.[1] ?? /filename="([^"]+)"/.exec(cd)?.[1] ?? "file");
+  if (opts.open) {
+    window.open(url, "_blank", "noopener");
+  } else {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
   }
-  return data as T;
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export const api = {
   get: <T>(path: string, query?: Query) => request<T>("GET", path, undefined, query),
-  post: <T>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}),
+  post: <T>(path: string, body?: unknown, query?: Query) => request<T>("POST", path, body ?? {}, query),
   patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, body),
+  put: <T>(path: string, body: unknown) => request<T>("PUT", path, body),
+  download,
 };
+
+export function form(fields: Record<string, string | Blob | null | undefined>): FormData {
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(fields)) if (v !== null && v !== undefined && v !== "") fd.append(k, v);
+  return fd;
+}

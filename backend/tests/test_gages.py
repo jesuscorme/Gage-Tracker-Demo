@@ -71,7 +71,7 @@ def test_create_validations(org, gage_type):
     assert r.status_code == 422
     r = org.post("/api/v1/gages", json=base | {"gage_type_id": org.type_id,
                                                "last_calibration_date": (today() + timedelta(days=1)).isoformat()})
-    assert r.status_code == 422 and r.json()["error"]["code"] == "future_calibration_date"
+    assert r.status_code == 422 and r.json()["error"]["code"] == "future_last_calibration_date"
     r = org.post("/api/v1/gages", json=base | {"gage_type_id": org.type_id, "gage_code": "bad code!"})
     assert r.status_code == 422
     other_plant = org.post("/api/v1/plants", json={"code": "P2", "name": "Plant 2"}).json()
@@ -118,11 +118,11 @@ def test_search_filter_sort_and_paginate(org, new_gage, gage_type):
 
 def test_edit_descriptive_fields_is_audited(org, new_gage):
     g = new_gage(org.tech, org.type_id)
-    r = org.tech.patch(f"/api/v1/gages/{g['id']}", json={"location": "Metrology lab", "manufacturer": "Starrett"})
-    assert r.status_code == 200 and r.json()["location"] == "Metrology lab"
+    r = org.tech.patch(f"/api/v1/gages/{g['id']}", json={"notes": "Jaws checked", "manufacturer": "Starrett"})
+    assert r.status_code == 200 and r.json()["manufacturer"] == "Starrett"
     events = org.get(f"/api/v1/gages/{g['id']}/audit").json()["items"]
     upd = next(e for e in events if e["action"] == "gage.updated")
-    assert upd["changes"]["location"] == [None, "Metrology lab"]
+    assert upd["changes"]["manufacturer"] == [None, "Starrett"]
     assert upd["actor_name"] == "metrology_technician user"
 
 
@@ -134,25 +134,29 @@ def test_gage_code_and_status_cannot_be_patched(org, new_gage):
     assert r.status_code == 422 and r.json()["error"]["code"] == "required_field"
 
 
-def test_technician_cannot_move_due_date_but_manager_can(org, new_gage):
-    g = new_gage(org.tech, org.type_id)  # OVERDUE: no calibration on record
-    recent = _days_ago(5)
-    r = org.tech.patch(f"/api/v1/gages/{g['id']}", json={"last_calibration_date": recent})
-    assert r.status_code == 403 and r.json()["error"]["details"]["required_permission"] == "gages:release"
-    r = org.tech.patch(f"/api/v1/gages/{g['id']}", json={"calibration_frequency_days": 3650})
-    assert r.status_code == 403
+def test_calibration_date_cannot_be_edited_after_registration(org, new_gage):
+    """After registration the last calibration only changes through a released calibration activity."""
+    g = new_gage(org, org.type_id)  # OVERDUE: no calibration on record
+    for actor in (org.tech, org.manager, org):
+        r = actor.patch(f"/api/v1/gages/{g['id']}", json={"last_calibration_date": _days_ago(5)})
+        assert r.status_code == 422 and r.json()["error"]["details"][0]["type"] == "extra_forbidden"
     assert org.get(f"/api/v1/gages/{g['id']}").json()["status"] == "OVERDUE"
 
-    r = org.manager.patch(f"/api/v1/gages/{g['id']}", json={"last_calibration_date": recent})
-    assert r.status_code == 200 and r.json()["status"] == "CALIBRATED"
+
+def test_frequency_change_requires_release_and_moves_due_date(org, new_gage):
+    g = new_gage(org.tech, org.type_id, last_calibration_date=_days_ago(100))  # due in 265 days
+    r = org.tech.patch(f"/api/v1/gages/{g['id']}", json={"calibration_frequency_days": 90})
+    assert r.status_code == 403 and r.json()["error"]["details"]["required_permission"] == "gages:release"
+    r = org.manager.patch(f"/api/v1/gages/{g['id']}", json={"calibration_frequency_days": 90})
+    assert r.status_code == 200 and r.json()["status"] == "OVERDUE"
     upd = next(e for e in org.get(f"/api/v1/gages/{g['id']}/audit").json()["items"] if e["action"] == "gage.updated")
-    assert upd["changes"]["status"] == ["OVERDUE", "CALIBRATED"]
+    assert upd["changes"]["status"] == ["CALIBRATED", "OVERDUE"]
 
 
 def test_resending_unchanged_due_fields_does_not_need_release(org, new_gage):
     g = new_gage(org, org.type_id, last_calibration_date=_days_ago(5))
     r = org.tech.patch(f"/api/v1/gages/{g['id']}", json={
-        "last_calibration_date": g["last_calibration_date"], "calibration_frequency_days": 365, "location": "Crib",
+        "calibration_frequency_days": 365, "notes": "Crib",
     })
     assert r.status_code == 200
 
@@ -186,24 +190,14 @@ def test_release_does_not_bypass_due_date(org, new_gage):
     assert r.json()["status"] == "OVERDUE" and r.json()["available_for_use"] is False
 
 
-def test_release_from_calibration_records_date(org, new_gage):
+def test_manual_release_cannot_record_a_calibration(org, new_gage):
+    """The interim calibration_date of the first increment was removed: calibrations are activities now."""
     g = new_gage(org, org.type_id, last_calibration_date=_days_ago(400))
     assert _transition(org.tech, g["id"], "IN_CALIBRATION", "Sent to lab").json()["status"] == "IN_CALIBRATION"
-    future = (today() + timedelta(days=2)).isoformat()
-    r = _transition(org.manager, g["id"], "ACTIVE", "Calibrated", calibration_date=future)
-    assert r.status_code == 422 and r.json()["error"]["code"] == "future_calibration_date"
-    r = _transition(org.manager, g["id"], "ACTIVE", "Calibrated", calibration_date=_days_ago(500))
-    assert r.json()["error"]["code"] == "calibration_date_regression"
-    r = _transition(org.manager, g["id"], "ACTIVE", "Calibrated, cert 123", calibration_date=_days_ago(1))
-    assert r.status_code == 200 and r.json()["status"] == "CALIBRATED"
-    assert r.json()["last_calibration_date"] == _days_ago(1)
-
-
-def test_calibration_date_only_allowed_when_leaving_calibration(org, new_gage):
-    g = new_gage(org, org.type_id)
-    _transition(org, g["id"], "OUT_OF_SERVICE")
-    r = _transition(org.manager, g["id"], "ACTIVE", calibration_date=_days_ago(1))
-    assert r.status_code == 422 and r.json()["error"]["code"] == "calibration_date_not_allowed"
+    r = _transition(org.manager, g["id"], "ACTIVE", "Calibrated", calibration_date=_days_ago(1))
+    assert r.status_code == 422
+    r = _transition(org.manager, g["id"], "ACTIVE", "Back from lab without record")
+    assert r.status_code == 200 and r.json()["status"] == "OVERDUE"  # still overdue: nothing was calibrated
 
 
 def test_invalid_transition_and_missing_reason(org, new_gage):
@@ -224,7 +218,7 @@ def test_logical_deletion_and_reactivation(org, new_gage):
     assert org.get("/api/v1/gages?include_inactive=true").json()["total"] == 1
     assert org.get("/api/v1/gages?status=INACTIVE").json()["total"] == 1
     assert org.get(f"/api/v1/gages/{g['id']}").status_code == 200  # record is kept
-    r = org.patch(f"/api/v1/gages/{g['id']}", json={"location": "x"})
+    r = org.patch(f"/api/v1/gages/{g['id']}", json={"notes": "x"})
     assert r.status_code == 409 and r.json()["error"]["code"] == "gage_inactive"
     assert _transition(org, g["id"], "OUT_OF_SERVICE").json()["error"]["code"] == "invalid_transition"
 

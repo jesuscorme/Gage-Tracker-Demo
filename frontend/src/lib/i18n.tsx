@@ -2,9 +2,13 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { en, es, format, type MessageKey } from "./messages";
+import { enModules, esModules } from "./messages-modules";
 
 export type Lang = "es" | "en";
-const DICTS = { es, en };
+const DICTS: Record<Lang, Record<MessageKey, string>> = {
+  es: { ...es, ...esModules },
+  en: { ...en, ...enModules },
+};
 const KEY = "gt.lang";
 
 interface I18n {

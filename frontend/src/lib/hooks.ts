@@ -39,3 +39,9 @@ export function useResource<T>(loader: () => Promise<T>, deps: unknown[] = []): 
   const reload = useCallback(() => setTick((x) => x + 1), []);
   return { data, error, loading, reload };
 }
+
+/** Today's date as YYYY-MM-DD in the browser's local time zone (not UTC). */
+export function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}

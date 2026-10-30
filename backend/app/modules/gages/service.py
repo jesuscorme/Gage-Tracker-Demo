@@ -5,16 +5,18 @@ on sensitive fields and auditing are applied the same way everywhere.
 """
 
 import uuid
-from datetime import UTC, datetime
+from collections.abc import Callable
+from datetime import UTC, date, datetime
 
 from sqlalchemy import Select, func, or_, select
 
 from app.core.errors import BusinessRuleError, ConflictError, NotFoundError, PermissionDeniedError
 from app.modules.audit import service as audit
-from app.modules.gages.models import Gage, GageStatusHistory, GageType
+from app.modules.gages.models import Gage, GageMovement, GageStatusHistory, GageType
 from app.modules.gages.schemas import (
     GageCreate,
     GageOut,
+    GageTransferIn,
     GageTransitionIn,
     GageTypeIn,
     GageTypeUpdate,
@@ -30,20 +32,25 @@ from app.modules.gages.status import (
     transition_permission,
 )
 from app.modules.identity.deps import TenantContext
-from app.modules.identity.models import OrganizationMembership
+from app.modules.identity.models import OrganizationMembership, User
 from app.modules.identity.permissions import P
-from app.modules.organizations.models import Department
+from app.modules.organizations.models import Department, Plant
 from app.modules.organizations.router import get_plant
 
 AUDITED_FIELDS = [
     "gage_code", "description", "gage_type_id", "plant_id", "department_id", "manufacturer", "model",
     "serial_number", "range_min", "range_max", "unit", "resolution", "accuracy", "criticality",
     "location", "responsible_user_id", "calibration_frequency_days", "last_calibration_date",
-    "next_due_date", "notes",
+    "next_due_date", "acquisition_date", "in_service_date", "notes",
 ]
-# Changing these moves the due date, so they can turn an overdue gage back into a usable one.
-DUE_DATE_FIELDS = {"calibration_frequency_days", "last_calibration_date"}
-REQUIRED_FIELDS = {"description", "gage_type_id", "plant_id", "calibration_frequency_days"}
+# Changing the frequency moves the due date, so it can turn an overdue gage into a usable one.
+DUE_DATE_FIELDS = {"calibration_frequency_days"}
+REQUIRED_FIELDS = {"description", "gage_type_id", "calibration_frequency_days"}
+ASSIGNMENT_FIELDS = ("plant_id", "department_id", "location", "responsible_user_id")
+
+# Other modules (calibration) can veto a manual status change, e.g. while an activity is
+# open. Each guard receives (ctx, gage, target) and raises an AppError to block.
+release_guards: list[Callable[[TenantContext, Gage, ControlStatus], None]] = []
 SORTS = {
     "gage_code": Gage.gage_code,
     "description": Gage.description,
@@ -139,8 +146,11 @@ def to_out(ctx: TenantContext, g: Gage) -> GageOut:
         criticality=g.criticality,
         location=g.location,
         notes=g.notes,
+        acquisition_date=g.acquisition_date,
+        in_service_date=g.in_service_date,
         calibration_frequency_days=g.calibration_frequency_days,
         last_calibration_date=g.last_calibration_date,
+        last_verification_date=g.last_verification_date,
         next_due_date=g.next_due_date,
         days_to_due=(g.next_due_date - ctx.today()).days if g.next_due_date else None,
         control_status=g.control_status,
@@ -153,7 +163,7 @@ def to_out(ctx: TenantContext, g: Gage) -> GageOut:
 
 
 def get_gage(ctx: TenantContext, gage_id: uuid.UUID, *, for_update: bool = False) -> Gage:
-    stmt = scoped_query(ctx).where(Gage.id == gage_id)
+    stmt = scoped_query(ctx).where(Gage.id == gage_id).execution_options(populate_existing=True)
     if for_update:
         stmt = stmt.with_for_update(of=Gage)
     gage = ctx.db.scalar(stmt)
@@ -222,7 +232,9 @@ def _validate_refs(ctx: TenantContext, data: dict, gage: Gage | None) -> None:
     """Check that every referenced entity belongs to the tenant and is consistent."""
     plant_id = data.get("plant_id", gage.plant_id if gage else None)
     if "plant_id" in data:
-        get_plant(ctx, data["plant_id"])  # 404 if outside tenant or user's plant scope
+        plant = get_plant(ctx, data["plant_id"])  # 404 if outside tenant or user's plant scope
+        if not plant.is_active and (gage is None or gage.plant_id != plant.id):
+            raise BusinessRuleError("Plant is inactive", code="plant_inactive")
     if "gage_type_id" in data:
         gt = get_gage_type(ctx, data["gage_type_id"])
         if not gt.is_active and (gage is None or gage.gage_type_id != gt.id):
@@ -242,23 +254,36 @@ def _validate_refs(ctx: TenantContext, data: dict, gage: Gage | None) -> None:
                                     code="department_plant_mismatch")
 
     if data.get("responsible_user_id") is not None:
-        member = ctx.db.scalar(
-            select(OrganizationMembership.id).where(
-                OrganizationMembership.user_id == data["responsible_user_id"],
-                OrganizationMembership.organization_id == ctx.organization_id,
-                OrganizationMembership.is_active.is_(True),
-            )
+        ensure_active_member(ctx, data["responsible_user_id"], "invalid_responsible")
+
+    today = ctx.today()
+    for field in ("last_calibration_date", "acquisition_date", "in_service_date"):
+        if data.get(field) is not None and data[field] > today:
+            raise BusinessRuleError(f"{field} cannot be in the future", code=f"future_{field}")
+    acq = data.get("acquisition_date", gage.acquisition_date if gage else None)
+    ins = data.get("in_service_date", gage.in_service_date if gage else None)
+    if acq and ins and ins < acq:
+        raise BusinessRuleError("in_service_date cannot be earlier than acquisition_date", code="invalid_dates")
+
+
+def ensure_active_member(ctx: TenantContext, user_id: uuid.UUID, code: str = "invalid_user") -> None:
+    member = ctx.db.scalar(
+        select(OrganizationMembership.id).where(
+            OrganizationMembership.user_id == user_id,
+            OrganizationMembership.organization_id == ctx.organization_id,
+            OrganizationMembership.is_active.is_(True),
         )
-        if member is None:
-            raise BusinessRuleError("Responsible user is not an active member of the organization",
-                                    code="invalid_responsible")
-
-    last_cal = data.get("last_calibration_date")
-    if last_cal is not None and last_cal > ctx.today():
-        raise BusinessRuleError("Calibration date cannot be in the future", code="future_calibration_date")
+    )
+    if member is None:
+        raise BusinessRuleError("User is not an active member of the organization", code=code)
 
 
-def create_gage(ctx: TenantContext, body: GageCreate) -> Gage:
+def current_status(ctx: TenantContext, gage: Gage) -> GageStatus:
+    return effective_status(gage.control_status, gage.next_due_date, ctx.today(), ctx.organization.due_soon_days)
+
+
+def build_gage(ctx: TenantContext, body: GageCreate) -> Gage:
+    """Validate and add a new gage to the session (no commit). Used by create and import."""
     data = body.model_dump()
     data["gage_code"] = body.gage_code.strip().upper()
     _validate_refs(ctx, data, None)
@@ -285,21 +310,29 @@ def create_gage(ctx: TenantContext, body: GageCreate) -> Gage:
     ctx.db.add(gage)
     ctx.db.flush()
 
-    status = effective_status(gage.control_status, gage.next_due_date, ctx.today(), ctx.organization.due_soon_days)
     ctx.db.add(GageStatusHistory(
         organization_id=ctx.organization_id, gage_id=gage.id, to_control_status=gage.control_status,
-        to_status=status.value, reason="Gage registered", changed_by=ctx.user_id,
+        to_status=current_status(ctx, gage).value, reason="Gage registered", changed_by=ctx.user_id,
     ))
     ctx.audit(action="gage.created", entity_type="gage", entity_id=gage.id,
               changes=audit.snapshot(gage, AUDITED_FIELDS))
+    return gage
+
+
+def create_gage(ctx: TenantContext, body: GageCreate) -> Gage:
+    gage = build_gage(ctx, body)
     ctx.db.commit()
     return get_gage(ctx, gage.id)
 
 
-def update_gage(ctx: TenantContext, gage_id: uuid.UUID, body: GageUpdate) -> Gage:
-    gage = get_gage(ctx, gage_id, for_update=True)
+def _ensure_editable(gage: Gage) -> None:
     if gage.control_status == ControlStatus.INACTIVE:
         raise ConflictError("Retired gages cannot be edited; reactivate it first", code="gage_inactive")
+
+
+def update_gage(ctx: TenantContext, gage_id: uuid.UUID, body: GageUpdate) -> Gage:
+    gage = get_gage(ctx, gage_id, for_update=True)
+    _ensure_editable(gage)
 
     data = body.model_dump(exclude_unset=True)
     nulled = sorted(k for k in REQUIRED_FIELDS if k in data and data[k] is None)
@@ -310,13 +343,9 @@ def update_gage(ctx: TenantContext, gage_id: uuid.UUID, body: GageUpdate) -> Gag
     data = {k: v for k, v in data.items() if audit.plain(getattr(gage, k)) != audit.plain(v)}
     if DUE_DATE_FIELDS & data.keys() and not ctx.has(P.GAGES_RELEASE):
         raise PermissionDeniedError(
-            "Changing calibration date or frequency requires release authorization",
+            "Changing the calibration frequency requires release authorization",
             details={"required_permission": P.GAGES_RELEASE, "fields": sorted(DUE_DATE_FIELDS & data.keys())},
         )
-    if "plant_id" in data:
-        get_plant(ctx, gage.plant_id)  # must also be allowed on the plant it leaves
-        if "department_id" not in data:
-            data["department_id"] = None
     if not data:
         return gage
 
@@ -327,21 +356,97 @@ def update_gage(ctx: TenantContext, gage_id: uuid.UUID, body: GageUpdate) -> Gag
         raise BusinessRuleError("range_min must be less than or equal to range_max", code="invalid_range")
 
     before = audit.snapshot(gage, AUDITED_FIELDS)
-    status_before = effective_status(gage.control_status, gage.next_due_date, ctx.today(),
-                                     ctx.organization.due_soon_days)
+    status_before = current_status(ctx, gage)
     for k, v in data.items():
         setattr(gage, k, v)
     gage.next_due_date = next_due(gage.last_calibration_date, gage.calibration_frequency_days)
     gage.updated_by = ctx.user_id
 
     changes = audit.diff(before, audit.snapshot(gage, AUDITED_FIELDS))
-    status_after = effective_status(gage.control_status, gage.next_due_date, ctx.today(),
-                                    ctx.organization.due_soon_days)
+    status_after = current_status(ctx, gage)
     if status_after != status_before:
         changes["status"] = [status_before.value, status_after.value]
     ctx.audit(action="gage.updated", entity_type="gage", entity_id=gage.id, changes=changes)
     ctx.db.commit()
     return get_gage(ctx, gage.id)
+
+
+def _labels(ctx: TenantContext, gage: Gage) -> dict[str, str | None]:
+    plant = ctx.db.get(Plant, gage.plant_id)
+    dept = ctx.db.get(Department, gage.department_id) if gage.department_id else None
+    resp = ctx.db.get(User, gage.responsible_user_id) if gage.responsible_user_id else None
+    return {
+        "plant": plant.code if plant else None,
+        "department": dept.code if dept else None,
+        "location": gage.location,
+        "responsible": resp.full_name if resp else None,
+    }
+
+
+def transfer_gage(ctx: TenantContext, gage_id: uuid.UUID, body: GageTransferIn) -> Gage:
+    """Reassign responsible and/or move the gage; records a movement and an audit event."""
+    gage = get_gage(ctx, gage_id, for_update=True)
+    _ensure_editable(gage)
+    data = body.model_dump(exclude_unset=True, exclude={"reason"})
+    if "plant_id" in data and data["plant_id"] is None:
+        raise BusinessRuleError("Plant cannot be empty", code="required_field", details=["plant_id"])
+    data = {k: v for k, v in data.items() if audit.plain(getattr(gage, k)) != audit.plain(v)}
+    if not data:
+        raise BusinessRuleError("Nothing to transfer: values are unchanged", code="no_changes")
+    if "plant_id" in data:
+        get_plant(ctx, gage.plant_id)  # must also be allowed on the plant it leaves
+        if "department_id" not in data:
+            data["department_id"] = None
+    _validate_refs(ctx, data, gage)
+
+    before_ids = audit.snapshot(gage, list(ASSIGNMENT_FIELDS))
+    before = _labels(ctx, gage)
+    for k, v in data.items():
+        setattr(gage, k, v)
+    gage.updated_by = ctx.user_id
+    ctx.db.flush()
+    after = _labels(ctx, gage)
+    readable = {k: [before[k], after[k]] for k in after if before[k] != after[k]}
+    ctx.db.add(GageMovement(organization_id=ctx.organization_id, gage_id=gage.id, changes=readable,
+                            reason=body.reason.strip(), moved_by=ctx.user_id))
+    ctx.audit(action="gage.transferred", entity_type="gage", entity_id=gage.id,
+              changes=audit.diff(before_ids, audit.snapshot(gage, list(ASSIGNMENT_FIELDS))) | {"labels": readable},
+              reason=body.reason.strip())
+    ctx.db.commit()
+    return get_gage(ctx, gage.id)
+
+
+def movements(ctx: TenantContext, gage_id: uuid.UUID) -> list[GageMovement]:
+    get_gage(ctx, gage_id)
+    return list(ctx.db.scalars(
+        select(GageMovement)
+        .where(GageMovement.gage_id == gage_id, GageMovement.organization_id == ctx.organization_id)
+        .order_by(GageMovement.moved_at.desc())
+    ))
+
+
+def apply_control_status(ctx: TenantContext, gage: Gage, target: ControlStatus, reason: str,
+                         action: str, extra_changes: dict | None = None) -> None:
+    """Change the controlled status, writing status history and audit (no permission check, no commit).
+
+    Used by manual transitions and by other modules (calibration) inside their own
+    transaction, so the gage record and its history always change together.
+    """
+    current = ControlStatus(gage.control_status)
+    status_before = current_status(ctx, gage)
+    gage.control_status = target.value
+    gage.retired_at = datetime.now(UTC) if target == ControlStatus.INACTIVE else None
+    gage.updated_by = ctx.user_id
+    status_after = current_status(ctx, gage)
+    ctx.db.add(GageStatusHistory(
+        organization_id=ctx.organization_id, gage_id=gage.id,
+        from_control_status=current.value, to_control_status=target.value,
+        from_status=status_before.value, to_status=status_after.value,
+        reason=reason, changed_by=ctx.user_id,
+    ))
+    changes = {"control_status": [current.value, target.value], "status": [status_before.value, status_after.value]}
+    ctx.audit(action=action, entity_type="gage", entity_id=gage.id, changes=changes | (extra_changes or {}),
+              reason=reason)
 
 
 def transition_gage(ctx: TenantContext, gage_id: uuid.UUID, body: GageTransitionIn) -> Gage:
@@ -356,44 +461,29 @@ def transition_gage(ctx: TenantContext, gage_id: uuid.UUID, body: GageTransition
             details={"from": current.value, "to": target.value},
         )
     ctx.ensure(permission)
+    for guard in release_guards:
+        guard(ctx, gage, target)
 
-    if body.calibration_date is not None:
-        if not (current == ControlStatus.IN_CALIBRATION and target == ControlStatus.ACTIVE):
-            raise BusinessRuleError("A calibration date can only be recorded when releasing from calibration",
-                                    code="calibration_date_not_allowed")
-        if body.calibration_date > ctx.today():
-            raise BusinessRuleError("Calibration date cannot be in the future", code="future_calibration_date")
-        if gage.last_calibration_date and body.calibration_date < gage.last_calibration_date:
-            raise BusinessRuleError("Calibration date is earlier than the last recorded calibration",
-                                    code="calibration_date_regression")
-
-    window = ctx.organization.due_soon_days
-    status_before = effective_status(gage.control_status, gage.next_due_date, ctx.today(), window)
-    before = audit.snapshot(gage, ["control_status", "last_calibration_date", "next_due_date"])
-
-    gage.control_status = target.value
-    if body.calibration_date is not None:
-        gage.last_calibration_date = body.calibration_date
-        gage.next_due_date = next_due(body.calibration_date, gage.calibration_frequency_days)
-    gage.retired_at = datetime.now(UTC) if target == ControlStatus.INACTIVE else None
-    gage.updated_by = ctx.user_id
-
-    status_after = effective_status(gage.control_status, gage.next_due_date, ctx.today(), window)
-    ctx.db.add(GageStatusHistory(
-        organization_id=ctx.organization_id, gage_id=gage.id,
-        from_control_status=current.value, to_control_status=target.value,
-        from_status=status_before.value, to_status=status_after.value,
-        reason=body.reason.strip(), changed_by=ctx.user_id,
-    ))
     action = {
         ControlStatus.INACTIVE: "gage.retired",
         ControlStatus.ACTIVE: "gage.reactivated" if current == ControlStatus.INACTIVE else "gage.released",
     }.get(target, "gage.restricted")
-    changes = audit.diff(before, audit.snapshot(gage, ["control_status", "last_calibration_date", "next_due_date"]))
-    changes["status"] = [status_before.value, status_after.value]
-    ctx.audit(action=action, entity_type="gage", entity_id=gage.id, changes=changes, reason=body.reason.strip())
+    apply_control_status(ctx, gage, target, body.reason.strip(), action)
     ctx.db.commit()
     return get_gage(ctx, gage.id)
+
+
+def record_calibration(ctx: TenantContext, gage: Gage, performed: date) -> dict:
+    """Set a released calibration as the gage's last calibration (no commit). Returns the diff.
+
+    An older calibration released late never moves the due date backwards.
+    """
+    before = audit.snapshot(gage, ["last_calibration_date", "next_due_date"])
+    if gage.last_calibration_date is None or performed >= gage.last_calibration_date:
+        gage.last_calibration_date = performed
+        gage.next_due_date = next_due(performed, gage.calibration_frequency_days)
+    gage.updated_by = ctx.user_id
+    return audit.diff(before, audit.snapshot(gage, ["last_calibration_date", "next_due_date"]))
 
 
 def status_history(ctx: TenantContext, gage_id: uuid.UUID) -> list[GageStatusHistory]:
