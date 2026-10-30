@@ -1,0 +1,37 @@
+# Development stack: PostgreSQL + API + web.
+#   docker compose up --build
+# Web: http://localhost:3000   API docs: http://localhost:8000/api/docs
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gagetracker
+      POSTGRES_PASSWORD: gagetracker
+      POSTGRES_DB: gagetracker
+    ports: ["5433:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gagetracker"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://gagetracker:gagetracker@db:5432/gagetracker
+      JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-change-me-0123456789}
+      CORS_ORIGINS: http://localhost:3000
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+
+  frontend:
+    build:
+      context: ./frontend
+      args: { API_URL: "http://backend:8000" }
+    ports: ["3000:3000"]
+    depends_on: [backend]
+
+volumes:
+  pgdata:

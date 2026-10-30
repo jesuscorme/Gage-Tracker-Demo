@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "Cascadia Mono", monospace;
+
+  /* Neutrals */
+  --color-ink: #0f1722;
+  --color-ink-2: #3b4656;
+  --color-ink-3: #6b7685;
+  --color-line: #dde2ea;
+  --color-line-2: #eef1f5;
+  --color-canvas: #f2f4f7;
+  --color-surface: #ffffff;
+
+  /* Navigation rail */
+  --color-rail: #0e1621;
+  --color-rail-2: #172231;
+  --color-rail-ink: #c5cfdc;
+  --color-rail-mute: #6f7d90;
+
+  /* Brand / action */
+  --color-accent: #0b63c1;
+  --color-accent-strong: #094f9a;
+  --color-accent-soft: #e6f0fb;
+
+  /* Gage status */
+  --color-ok: #17803d;
+  --color-ok-soft: #e7f5ec;
+  --color-warn: #a95c00;
+  --color-warn-soft: #fdf2e1;
+  --color-bad: #c0262d;
+  --color-bad-soft: #fcebec;
+  --color-block: #7a1f4a;
+  --color-block-soft: #f6e8ef;
+  --color-info: #1d5fc8;
+  --color-info-soft: #e7effb;
+  --color-mute: #5d6878;
+  --color-mute-soft: #eceff3;
+}
+
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Technical identifiers and figures */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.data-table th {
+  position: sticky;
+  top: 0;
+  background: #f7f8fa;
+  color: var(--color-ink-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--color-line);
+  white-space: nowrap;
+}
+.data-table th button {
+  text-transform: inherit;
+  letter-spacing: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.data-table th button:hover {
+  color: var(--color-ink);
+}
+.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-line-2);
+  vertical-align: middle;
+}
+.data-table tbody tr:hover td {
+  background: #f8fafc;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
