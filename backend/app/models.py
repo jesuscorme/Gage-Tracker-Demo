@@ -27,3 +27,18 @@ from app.modules.laboratory.models import (  # noqa: F401
 from app.modules.notifications.models import Notification, NotificationPreference  # noqa: F401
 from app.modules.organizations.models import Department, Organization, Plant  # noqa: F401
 from app.modules.standards.models import Standard, StandardCertificate  # noqa: F401
+from app.modules.configuration.models import ConfigItem, ConfigVersion, CustomFieldValue, WorkflowEvent  # noqa: F401,E402
+from app.modules.events.models import OutboxEvent  # noqa: F401,E402
+from app.modules.integrations.models import (  # noqa: F401,E402
+    ApiClient,
+    ApiRequestLog,
+    Device,
+    DeviceReading,
+    IdempotencyRecord,
+    ImportJob,
+    WebhookAttempt,
+    WebhookDelivery,
+    WebhookEndpoint,
+)
+from app.modules.msa.models import MsaCriteriaSet, MsaObservation, MsaReport, MsaRun, MsaStudy  # noqa: F401,E402
+from app.modules.oot.models import OotAction, OotCase, OotImpactItem, OotSettings  # noqa: F401,E402

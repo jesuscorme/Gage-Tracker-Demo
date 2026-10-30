@@ -33,10 +33,24 @@ from app.modules.organizations.models import Organization
 bearer = HTTPBearer(auto_error=False)
 
 
+def _client_ip(request: Request) -> str | None:
+    return request.client.host if request.client else None
+
+
 def get_current_user(
+    request: Request,
     creds: HTTPAuthorizationCredentials | None = Depends(bearer),
+    x_api_key: str | None = Header(default=None, max_length=200),
     db: Session = Depends(get_db),
 ) -> User:
+    if creds is None and x_api_key:
+        # Machine clients (app/modules/integrations/api_clients.py).
+        from app.modules.integrations.api_clients import authenticate
+
+        user = authenticate(db, x_api_key, request.method, request.url.path, _client_ip(request))
+        if user is None:
+            raise AuthenticationError("Invalid, expired or revoked API key", code="invalid_api_key")
+        return user
     if creds is None or creds.scheme.lower() != "bearer":
         raise AuthenticationError("Authentication required")
     user_id = decode_access_token(creds.credentials)
@@ -95,10 +109,6 @@ class TenantContext:
             ip_address=self.ip_address,
             **kwargs,
         )
-
-
-def _client_ip(request: Request) -> str | None:
-    return request.client.host if request.client else None
 
 
 def get_tenant_context(

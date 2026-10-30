@@ -4,15 +4,17 @@ Plataforma modular y multi-tenant para la gestión de instrumentos de medición 
 
 - **Backend:** Python 3.12 · FastAPI · SQLAlchemy 2 · Alembic · PostgreSQL 16
 - **Frontend:** Next.js 15 · React 19 · TypeScript · Tailwind CSS 4
-- **Estado (≈ 45 %):** Plataforma, Gage Management, Calibration, Standards, Competency y Laboratory Operations funcionales. Ver [docs/MASTER_IMPLEMENTATION_PLAN.md](docs/MASTER_IMPLEMENTATION_PLAN.md) y [docs/PROGRESS_REPORT_02.md](docs/PROGRESS_REPORT_02.md).
+- **Estado (≈ 72 %):** Plataforma, Gage Management, Calibration, Standards, Competency, Laboratory, MSA (motor estadístico validado), OOT & Impact, Integraciones, Configuración y Compliance. Ver [docs/MASTER_IMPLEMENTATION_PLAN.md](docs/MASTER_IMPLEMENTATION_PLAN.md), [docs/PROGRESS_REPORT_03.md](docs/PROGRESS_REPORT_03.md), [docs/msa/](docs/msa/README.md) y [docs/integrations/](docs/integrations/README.md).
 
 ## Estructura
 
 ```
 backend/            API FastAPI (monolito modular)
   app/core/         configuración, BD, errores, logging, seguridad
+  app/engine/       motor estadístico MSA (independiente de API y BD)
   app/modules/      identity · organizations · audit · documents · gages · standards · competency
                     calibration · laboratory · notifications · dashboard · health
+                    msa · oot · configuration · events · integrations · compliance
   alembic/          migraciones versionadas
   tests/            pruebas unitarias e integración (PostgreSQL real)
 frontend/           Next.js (App Router)
@@ -20,6 +22,7 @@ frontend/           Next.js (App Router)
   src/components/   componentes reutilizables (UI, shell, formularios)
   src/lib/          cliente API, auth, i18n (es/en), tipos
 docs/               plan maestro, línea base, ADRs, roadmap, reporte de avance
+edge/edge_agent.py  agente de referencia del Edge Connector (cola local store-and-forward)
 scripts/dev-db.ps1  PostgreSQL local sin Docker
 docker-compose.yml  stack de desarrollo con Docker
 ```
@@ -58,7 +61,9 @@ No se cargan datos de ejemplo.
 **otorgar autorizaciones** en *Competencias → Autorizaciones* (calibración interna, revisión técnica,
 aprobación, servicio de laboratorio, inspección dimensional) → registrar patrones con su certificado →
 dar de alta servicios del laboratorio en *Configuración técnica*. Sin autorizaciones vigentes el sistema
-no permite ejecutar, revisar ni aprobar actividades restringidas (comportamiento intencional).
+no permite ejecutar, revisar ni aprobar actividades restringidas (comportamiento intencional). Para calcular estudios MSA
+se requiere la autorización `MSA_EVALUATION`. Los criterios de aceptación MSA se crean (hay plantillas) y los aprueba
+otro usuario en *MSA → Criterios MSA*; sin criterios aprobados los resultados no emiten decisión.
 
 ## Ejecución con Docker
 
@@ -92,3 +97,5 @@ La suite de backend reconstruye el esquema en la BD de pruebas mediante las migr
 | `LOG_LEVEL`, `LOG_JSON` | Logging estructurado |
 | `STORAGE_DIR` | Carpeta de documentos subidos (certificados, fotos, informes). Respaldar junto con la BD |
 | `MAX_UPLOAD_MB` | Tamaño máximo por archivo (default 20) |
+| `SCHEDULER_ENABLED`, `SCHEDULER_INTERVAL_SECONDS` | Tareas de fondo: webhooks, escalamientos, barrido de vencidos |
+| `WEBHOOK_ALLOW_HTTP`, `WEBHOOK_TIMEOUT_SECONDS` | Webhooks (en producción solo https) |

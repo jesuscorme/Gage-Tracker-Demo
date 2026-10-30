@@ -1,4 +1,5 @@
 // UI strings. `en` is typed against `es`, so a missing key fails type-checking.
+import type { B3Key } from "./messages-b3";
 import type { ModuleKey } from "./messages-modules";
 
 export const es = {
@@ -203,7 +204,7 @@ export const es = {
 };
 
 export type BaseKey = keyof typeof es;
-export type MessageKey = BaseKey | ModuleKey;
+export type MessageKey = BaseKey | ModuleKey | B3Key;
 
 export const en: Record<BaseKey, string> = {
   "app.name": "Gage Tracker",

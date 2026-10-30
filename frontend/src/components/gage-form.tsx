@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { localToday, useResource } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import type { Department, Gage, GageType, OrgUser, Plant } from "@/lib/types";
+import { CustomFieldInputs, type Values, useFieldDefs } from "./custom-fields";
 import { Alert, Button, Card, Field, Input, Select, Textarea, errorText } from "./ui";
 
 type FormState = Record<
@@ -65,6 +66,8 @@ export function GageForm({ gage }: { gage?: Gage }) {
   const [form, setForm] = useState<FormState>(initial);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [custom, setCustom] = useState<Values>({});
+  const fieldDefs = useFieldDefs("gage");
 
   const plants = useResource(() => api.get<Plant[]>("/plants"));
   const types = useResource(() => api.get<GageType[]>("/gage-types"));
@@ -97,6 +100,7 @@ export function GageForm({ gage }: { gage?: Gage }) {
           const p = toPayload(k, v);
           if (p !== null) body[k] = p;
         }
+        body.custom_fields = custom;
         saved = await api.post<Gage>("/gages", body);
       }
       router.push(`/gages/${saved.id}`);
@@ -252,6 +256,10 @@ export function GageForm({ gage }: { gage?: Gage }) {
           <Textarea maxLength={4000} value={form.notes} onChange={set("notes")} />
         </Field>
       </Card>
+
+      {!gage && !!fieldDefs.data?.length && (
+        <Card title={t("cf.title")}><CustomFieldInputs defs={fieldDefs.data} values={custom} onChange={setCustom} /></Card>
+      )}
 
       <div className="flex justify-end gap-2">
         <Button type="button" onClick={() => router.back()}>{t("common.cancel")}</Button>

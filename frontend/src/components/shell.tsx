@@ -34,8 +34,8 @@ const NAV: { section: MessageKey; items: NavItem[] }[] = [
       { href: "/calibrations/calendar", label: "nav.calendar", icon: "calendar", permission: "calibration:read" },
       { href: "/standards", label: "nav.standards", icon: "standards", permission: "standards:read" },
       { href: "/competency", label: "nav.competency", icon: "people", permission: "competency:read" },
-      { href: "#msa", label: "nav.msa", icon: "msa", soon: true },
-      { href: "#oot", label: "nav.oot", icon: "oot", soon: true },
+      { href: "/msa", label: "nav.msa", icon: "msa", permission: "msa:read" },
+      { href: "/oot", label: "nav.oot", icon: "oot", permission: "oot:read" },
     ],
   },
   {
@@ -46,6 +46,14 @@ const NAV: { section: MessageKey; items: NavItem[] }[] = [
       { href: "/laboratory/schedule", label: "nav.labSchedule", icon: "board", permission: "lab:manage" },
       { href: "/laboratory/work-orders", label: "nav.labWorkOrders", icon: "wrench", permission: "lab:read" },
       { href: "/laboratory/reports", label: "nav.labReports", icon: "file", permission: "lab:read" },
+    ],
+  },
+  {
+    section: "nav.section.quality",
+    items: [
+      { href: "/compliance", label: "nav.compliance", icon: "audit", permission: "compliance:read" },
+      { href: "/integrations", label: "nav.integrations", icon: "board", permission: "integrations:read" },
+      { href: "/settings/configuration", label: "nav.configuration", icon: "gear", permission: "config:read" },
     ],
   },
   {

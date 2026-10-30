@@ -12,39 +12,55 @@
 
 ## Estado de implementación
 
-**Última actualización:** 2026-10-30 · **Avance global estimado:** ≈ 45 % · Detalle: `docs/PROGRESS_REPORT_02.md` (bloque 2) y `docs/PROGRESS_REPORT_01.md` (bloque 1)
+**Última actualización:** 2026-10-30 (bloque 3) · **Avance global estimado:** ≈ 72 % (objetivo del bloque: 80 %) · Detalle: `docs/PROGRESS_REPORT_03.md`, `docs/PROGRESS_REPORT_02.md`, `docs/PROGRESS_REPORT_01.md`
+
+Estados: COMPLETADO · PARCIAL · PENDIENTE · NO VALIDADO.
 
 | Fase | Funcionalidad | Estado | Evidencia | Pendientes |
 |---|---|---|---|---|
-| 0 | Línea base, ADRs, roadmap | COMPLETADO | `docs/PROJECT_BASELINE.md`, `ARCHITECTURE_DECISIONS.md` | — |
-| 1 | Organizaciones, plantas, usuarios, auth JWT | COMPLETADO | `test_platform.py` (13) | OIDC, rate limiting, cookie httpOnly |
-| 1 | RBAC (35 permisos, 7 roles) | COMPLETADO | `test_rbac.py` (18, matriz por rol) | Roles personalizados (Fase 9) |
-| 1 | Multi-tenant + alcance por planta | COMPLETADO | `test_tenant_isolation.py` (9) + pruebas de aislamiento por módulo | RLS en BD |
+| 0 | Línea base, ADRs, roadmap | COMPLETADO | `docs/PROJECT_BASELINE.md`, `ARCHITECTURE_DECISIONS.md` (ADR-001…028) | — |
+| 1 | Organizaciones, plantas, usuarios, auth JWT | COMPLETADO | `test_platform.py` | OIDC, rate limiting, cookie httpOnly |
+| 1 | RBAC (48 permisos, 8 roles) | COMPLETADO | `test_rbac.py`; permisos por módulo en cada prueba | Roles personalizados |
+| 1 | Multi-tenant + alcance por planta | COMPLETADO | `test_tenant_isolation.py` + aislamiento en MSA, OOT, integraciones, compliance | RLS en BD |
 | 1 | Audit trail inmutable, logging, health | COMPLETADO | triggers append-only probados | — |
 | 1 | Docker | PARCIAL | Archivos escritos | No probado (sin Docker en el equipo) |
-| 2 | Expediente completo (fechas, fotos, documentos) | COMPLETADO | `test_gage_completion.py`, E2E bloque 2 | — |
-| 2 | Estados controlados y calculados | COMPLETADO | `test_gage_status.py` (20), `test_gages.py` (20) | — |
-| 2 | Transferencia/reasignación con historial | COMPLETADO | `test_transfer_*`, E2E | — |
-| 2 | Importación CSV/XLSX y exportación | COMPLETADO | `test_import_*`, `test_export_*`, E2E | — |
-| 2 | Unicidad de Gage ID configurable | PENDIENTE | — | Hoy fija por organización |
-| 3 | Tipos de actividad configurables | COMPLETADO | `test_disabled_activity_type_*` | — |
-| 3 | Flujo plan→solicitud→programación→ejecución→revisión→aprobación→liberación | COMPLETADO | `test_calibration.py` (16), E2E | — |
-| 3 | As Found / As Left separados e inmutables | COMPLETADO | `test_as_found_*`, `test_point_corrections_*` | — |
-| 3 | Certificados PDF sin reemplazo silencioso | COMPLETADO | `test_approved_certificate_*` | — |
-| 3 | Liberación transaccional al expediente | COMPLETADO | `test_internal_calibration_end_to_end_*`, `test_failed_*` | — |
-| 3 | Calendario y panel de vencimientos | COMPLETADO | `test_calendar_overview_*`, E2E | — |
-| 3 | Notificaciones | PARCIAL | En la app con preferencias | Correo y alertas programadas |
-| 4 | Patrones, certificados, vigencia, uso con instantánea | COMPLETADO | `test_standards_competency.py`, `test_expired_standard_*` | Uso de patrones en OT de laboratorio |
-| 4 | Perfiles, competencias, matriz, autorizaciones | COMPLETADO | `test_competency_records_*`, `test_authorization_scope_*` | Anulación de registros con motivo |
-| 4 | Validación de autorización en calibración y laboratorio | COMPLETADO | `test_unauthorized_*`, `test_segregation_*`, `test_scheduling_*` | — |
-| 5 | Solicitudes de servicio | COMPLETADO | `test_request_lifecycle_*` | Cotización |
-| 5 | Programación con reglas de compatibilidad | COMPLETADO | `test_scheduling_rejects_incompatible_assignments` | Capacidad por equipo/recurso, Gantt |
-| 5 | OT, captura dimensional, correcciones | COMPLETADO | `test_execution_capture_*`, `test_measurement_with_unavailable_gage_*` | QR/código de barras |
-| 5 | Informes PDF con revisiones | COMPLETADO | `test_execution_capture_*` (PDF descargado) | — |
-| 5 | KPIs operativos reales | COMPLETADO | `test_rejected_report_and_dashboard_kpis` | — |
-| 6–12 | MSA, OOT, integraciones, configuración, producción | PENDIENTE | — | Siguiente bloque: MSA + motor estadístico + OOT |
+| 2 | Gage Management (expediente, estados, transferencias, import/export) | COMPLETADO | `test_gages*.py`, E2E bloques 1–2 | Unicidad de Gage ID configurable |
+| 2 | Campos personalizados en alta y detalle de instrumentos | COMPLETADO | `test_configuration.py::test_custom_fields_*`, E2E bloque 3 | — |
+| 3 | Calibración: flujo completo, As Found/As Left, certificados, liberación | COMPLETADO | `test_calibration.py` (16), E2E | — |
+| 3 | Matriz de aprobación aplicada a calibración | COMPLETADO | `test_approval_matrix_restricts_calibration_approval` | — |
+| 3 | Notificaciones | PARCIAL | En la app + eventos/webhooks | Correo |
+| 4 | Patrones, competencias, autorizaciones | COMPLETADO | `test_standards_competency.py` | Uso de patrones en OT de laboratorio |
+| 5 | Laboratorio (solicitudes, programación, OT, captura, informes, KPIs) | COMPLETADO | `test_laboratory.py`, E2E | Cotización, QR, capacidad por recurso |
+| 6 | Estudios MSA: alta, diseño, captura manual/pegado/importación, correcciones con reemplazo, secuencia aleatoria | COMPLETADO | `test_msa.py` (8), E2E bloque 3 | Plan MSA por característica / plan de control |
+| 6 | Motor estadístico independiente y versionado | COMPLETADO | `backend/app/engine/`, `test_engine_*.py` (48), `docs/msa/README.md` | — |
+| 6 | GRR cruzado Promedio y Rango | COMPLETADO (validado) | Ejemplo AIAG reproducido | — |
+| 6 | GRR cruzado ANOVA | COMPLETADO (validado) | SS AIAG + statsmodels (12 diseños) | — |
+| 6 | GRR anidado ANOVA | COMPLETADO (validado) | Cálculo a mano + statsmodels (8 diseños) | — |
+| 6 | Concordancia por atributos | COMPLETADO (validado) | Fleiss publicado + statsmodels | Método de detección de señales (AIAG) no implementado |
+| 6 | Sesgo / Linealidad | COMPLETADO (validado) | Ejemplos AIAG reproducidos + scipy | — |
+| 6 | Estabilidad / Tipo 1 | COMPLETADO (validado sin ejemplo publicado) | Cálculo a mano; constantes SPC citadas | Validar con caso publicado cuando se disponga |
+| 6 | Criterios de aceptación configurables y versionados | COMPLETADO | `test_criteria_resolution_*`, trigger de inmutabilidad | — |
+| 6 | Versionado de ejecuciones y reproducibilidad | COMPLETADO | `msa_runs` append-only, `verify` | — |
+| 6 | Reportes PDF por metodología | COMPLETADO | `test_grr_study_end_to_end_*`, E2E | Reporte en español (hoy en inglés) |
+| 6 | Referencias de página del manual AIAG MSA | NO VALIDADO | Manual no disponible en el equipo | Verificar contra copia controlada |
+| 7 | Registro OOT automático (calibración) y manual | COMPLETADO | `test_oot.py` (5) | — |
+| 7 | Restricción configurable del instrumento, liberación autorizada | COMPLETADO | `test_detection_*`, `test_restriction_survives_*` | — |
+| 7 | Análisis retrospectivo (periodo, mediciones, OT, asignaciones, MSA, lecturas de dispositivos) | COMPLETADO | `test_detection_*`, E2E | Producto/lote: solo manual (el sistema no tiene esos datos) |
+| 7 | Acciones, revisión, aprobación, cierre con requisitos configurables | COMPLETADO | `test_detection_*` | Plantilla de notificación al cliente |
+| 8 | API versionada, clientes API, actividad, paginación, filtros | COMPLETADO | `test_integrations.py` | Rate limiting por cliente |
+| 8 | Idempotencia | COMPLETADO | `test_idempotent_retries_*` | — |
+| 8 | Eventos + webhooks (firma, reintentos, dead letter, deduplicación) | COMPLETADO | `test_webhooks_*`, `test_overdue_scan_*` | Worker dedicado; cifrado del secreto; anti-SSRF DNS |
+| 8 | Importaciones con mapeo, vista previa, historial, reproceso | COMPLETADO | `test_gage_import_*`, `test_msa_data_import_*`, E2E | Más importadores (patrones, competencias) |
+| 8 | Arquitectura de conectores + simulador + Edge Connector | PARCIAL | `connectors.py`, `edge/edge_agent.py`, `test_edge_agent.py` | Adaptadores de fabricantes (ninguno declarado compatible) |
+| 8 | Integraciones ERP | PENDIENTE | — | Fuera del alcance del bloque |
+| 9 | Campos personalizados, formularios, versionado con aprobación | COMPLETADO | `test_configuration.py` (6) | El formulario configurado aún no reordena las pantallas |
+| 9 | Workflows configurables (estados, transiciones, votos, segregación, escalamiento) | COMPLETADO | `test_custom_workflow_*` | Editor visual (hoy JSON validado) |
+| 9 | Matrices de aprobación y reglas declarativas | COMPLETADO | `test_custom_workflow_*`, `test_approval_matrix_*` | — |
+| 9 | Compliance & Audit (matriz, cláusulas, expediente, certificados, aprobaciones, pendientes, exportación) | COMPLETADO | `test_compliance.py` (2), E2E | Expediente en PDF |
+| 10 | Dashboard ejecutivo | PENDIENTE | — | Siguiente bloque |
+| 11–12 | Producción, despliegue híbrido, liberación | PENDIENTE | — | Siguiente bloque |
 
-Resultados de la última corrida: backend 118/118, frontend 6/6, `tsc` y `next build` OK, E2E navegador 13/13 (regresión) y 9/9 (bloque 2).
+Resultados de la última corrida: backend 196/196 (incluye 48 de validación estadística), frontend 11/11, `tsc` y `next build` OK, `alembic check` sin diferencias, E2E navegador 13/13 (bloque 3), 13/13 (bloque 1) y 9/9 (bloque 2).
 
 ---
 

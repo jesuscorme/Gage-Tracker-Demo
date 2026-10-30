@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     storage_dir: str = "./var/storage"
     max_upload_mb: int = Field(default=20, ge=1, le=200)
 
+    # Background jobs (webhook delivery, workflow escalation, overdue scan). Disabled in tests.
+    scheduler_enabled: bool = True
+    scheduler_interval_seconds: int = Field(default=30, ge=5, le=3600)
+    # Plain-HTTP webhook targets are only accepted outside production.
+    webhook_allow_http: bool = True
+    webhook_timeout_seconds: float = Field(default=10, gt=0, le=60)
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

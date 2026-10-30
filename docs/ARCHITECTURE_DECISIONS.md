@@ -120,3 +120,35 @@ Las notificaciones se crean en la misma transacción que el evento y respetan pr
 ## ADR-020 · Numeración de documentos
 
 `CAL-AAAA-NNNNN`, `SR-…`, `WO-…`, `MR-…` por organización y año, con fila bloqueada (`code_sequences`), sin huecos por concurrencia.
+
+## ADR-021 · Motor estadístico independiente, un módulo por método
+
+`backend/app/engine/` no importa nada de la API ni de la BD: JSON de entrada → JSON de salida. Cada método tiene su propio módulo, validación, modelo y versión (no hay una fórmula genérica). Constantes solo de tablas publicadas; fuera de rango el diseño se rechaza en lugar de extrapolar. numpy/scipy para el cálculo; statsmodels/pandas solo en pruebas como implementación independiente.
+
+## ADR-022 · Ejecuciones MSA inmutables y reproducibles
+
+Cada cálculo guarda la instantánea exacta de entrada, su SHA-256, versión del algoritmo y del motor, instantánea de criterios, resultados y decisión (`msa_runs`, trigger append-only). Una actualización del motor nunca reescribe resultados: `verify` recalcula y compara sin modificar. Los reportes PDF se generan desde la instantánea de la ejecución.
+
+## ADR-023 · Resultado estadístico separado de la decisión
+
+El motor no decide aceptación. Los criterios son datos de la organización (alcance organización/planta/cliente, fuente, versión, segundo aprobador; inmutables tras aprobarse). Sin criterios → `NO_CRITERIA`; indicador no calculable → `INCONCLUSIVE`. La conclusión final la registra una persona con justificación si difiere.
+
+## ADR-024 · Configuración versionada con aprobación
+
+`config_items` + `config_versions` (contenido inmutable por trigger). Workflows, matrices de aprobación y reglas requieren aprobación de otro usuario; campos y formularios se activan al guardar. Definiciones declarativas validadas: sin código ni expresiones regulares de usuarios (formatos de texto de una lista cerrada).
+
+## ADR-025 · Motor de workflow genérico con versión fijada por registro
+
+Cada registro conserva la versión del workflow con la que nació (0 = definición del sistema). Estados del sistema obligatorios por entidad; capacidades por estado que el dominio consulta (p. ej. `capture`, `release_gage`). Transición = estado + permiso + matriz + autorización personal + segregación + comentario + reglas + precondiciones del dominio; votos para quórum; escalamiento idempotente. Historial append-only.
+
+## ADR-026 · OOT acoplado por hooks
+
+Calibración expone `release_hooks`; Gage Management `restriction_holders` y `release_guards`. OOT los usa para crear el caso en la misma transacción de la liberación, mantener el instrumento fuera de servicio aunque se recalibre, y bloquear la liberación ordinaria. Solo `oot:approve` + `gages:release` liberan, y con una calibración aceptable posterior a la detección.
+
+## ADR-027 · Outbox transaccional + webhooks; idempotencia por middleware
+
+Eventos en la misma transacción del cambio (deduplicación por clave). Entrega asíncrona firmada (HMAC), backoff y dead letter. Idempotencia de escrituras por `Idempotency-Key`, con alcance por credencial y organización, guardando la respuesta 24 h.
+
+## ADR-028 · Clientes API como cuentas de servicio; conectores por adaptador
+
+Una llave API resuelve a un usuario de servicio con membresía: todas las reglas de permisos, plantas, tenant y auditoría se aplican sin código especial. Los dispositivos se integran por adaptadores; el servidor re-interpreta la trama cruda. No se declara compatibilidad con fabricantes sin adaptador probado.

@@ -36,8 +36,10 @@ from app.modules.calibration.models import (
     CalibrationStatusHistory,
 )
 from app.modules.competency import service as competency
+from app.modules.configuration import service as config
 from app.modules.documents import service as documents
 from app.modules.documents.models import Attachment
+from app.modules.events import service as events
 from app.modules.gages import service as gages
 from app.modules.gages.models import Gage
 from app.modules.gages.status import ControlStatus
@@ -145,6 +147,10 @@ def _check_execution_authorization(ctx: TenantContext, a: CalibrationActivity, u
     if activity:
         competency.ensure_authorized(ctx, user_id, activity, on=on, gage_type_id=a.gage.gage_type_id,
                                      plant_id=a.plant_id)
+
+
+# Called inside the release transaction after the gage record is updated (OOT detection).
+release_hooks: list = []
 
 
 # Block manual status changes of a gage while a calibration activity holds it.
@@ -400,6 +406,11 @@ def add_certificate(ctx: TenantContext, activity_id: uuid.UUID, meta: dict, file
               entity_type="calibration", entity_id=a.id, reason=reason,
               changes={"certificate": cert.certificate_number,
                        "superseded": current.certificate_number if current else None})
+    events.emit(ctx.db, ctx.organization_id, "certificate.uploaded", "calibration", a.id,
+                {"calibration_code": a.calibration_code, "gage_id": a.gage_id, "certificate_number":
+                 cert.certificate_number, "issuer": cert.issuer, "issue_date": cert.issue_date,
+                 "replaced": current.certificate_number if current else None},
+                dedupe_key=f"certificate.uploaded:{cert.id}")
     ctx.db.commit()
     return cert
 
@@ -475,6 +486,7 @@ def review(ctx: TenantContext, activity_id: uuid.UUID, accept: bool, comments: s
     a = get_activity(ctx, activity_id, for_update=True)
     _require_status(a, "PENDING_REVIEW")
     _distinct_people(a, ctx.user_id, "reviewer")
+    config.ensure_approval(ctx, "calibration", "REVIEW", plant_id=a.plant_id, gage_type_id=a.gage.gage_type_id)
     competency.ensure_authorized(ctx, ctx.user_id, "TECHNICAL_REVIEW", gage_type_id=a.gage.gage_type_id,
                                  plant_id=a.plant_id)
     if not accept:
@@ -497,6 +509,8 @@ def approve(ctx: TenantContext, activity_id: uuid.UUID, accept: bool, comments: 
     a = get_activity(ctx, activity_id, for_update=True)
     _require_status(a, "PENDING_APPROVAL")
     _distinct_people(a, ctx.user_id, "approver")
+    config.ensure_approval(ctx, "calibration", "APPROVE" if accept else "REJECT", plant_id=a.plant_id,
+                           gage_type_id=a.gage.gage_type_id)
     competency.ensure_authorized(ctx, ctx.user_id, "APPROVAL", gage_type_id=a.gage.gage_type_id, plant_id=a.plant_id)
     if not accept:
         if not comments:
@@ -516,6 +530,7 @@ def release(ctx: TenantContext, activity_id: uuid.UUID, comment: str | None) -> 
     """Release an approved activity and update the gage in the same transaction."""
     a = get_activity(ctx, activity_id, for_update=True)
     _require_status(a, "APPROVED")
+    config.ensure_approval(ctx, "calibration", "RELEASE", plant_id=a.plant_id, gage_type_id=a.gage.gage_type_id)
     gage = gages.get_gage(ctx, a.gage_id, for_update=True)
     missing = missing_requirements(ctx, a)  # configuration may have changed since submission
     if missing:
@@ -537,8 +552,13 @@ def release(ctx: TenantContext, activity_id: uuid.UUID, comment: str | None) -> 
             gages.apply_control_status(ctx, gage, ControlStatus.OUT_OF_SERVICE, reason, "gage.restricted",
                                        {"calibration_code": a.calibration_code} | gage_changes)
     elif gage.control_status == ControlStatus.IN_CALIBRATION.value:
-        gages.apply_control_status(ctx, gage, ControlStatus.ACTIVE, reason, "gage.released",
-                                   {"calibration_code": a.calibration_code} | gage_changes)
+        hold = gages.restriction_hold(ctx, gage)
+        if hold:
+            gages.apply_control_status(ctx, gage, ControlStatus.OUT_OF_SERVICE, f"{reason} · {hold}",
+                                       "gage.restricted", {"calibration_code": a.calibration_code} | gage_changes)
+        else:
+            gages.apply_control_status(ctx, gage, ControlStatus.ACTIVE, reason, "gage.released",
+                                       {"calibration_code": a.calibration_code} | gage_changes)
     elif gage_changes:
         ctx.audit(action="gage.calibration_recorded", entity_type="gage", entity_id=gage.id, reason=reason,
                   changes=gage_changes | {"calibration_code": a.calibration_code})
@@ -552,6 +572,12 @@ def release(ctx: TenantContext, activity_id: uuid.UUID, comment: str | None) -> 
                                         "as_found_in_tolerance": a.as_found_in_tolerance})
     notify(ctx, [gage.responsible_user_id], "calibration.released", f"{a.calibration_code} released",
            f"{gage.gage_code} · {a.result}", f"/gages/{gage.id}")
+    events.emit(ctx.db, ctx.organization_id, "calibration.released", "calibration", a.id,
+                {"calibration_code": a.calibration_code, "gage_id": gage.id, "gage_code": gage.gage_code,
+                 "activity_type": a.activity_type, "result": a.result, "performed_date": a.performed_date,
+                 "as_found_in_tolerance": a.as_found_in_tolerance, "due_date": a.due_date})
+    for hook in release_hooks:
+        hook(ctx, a, gage)
     ctx.db.commit()
     return a
 
@@ -559,6 +585,7 @@ def release(ctx: TenantContext, activity_id: uuid.UUID, comment: str | None) -> 
 def cancel(ctx: TenantContext, activity_id: uuid.UUID, reason: str) -> CalibrationActivity:
     a = get_activity(ctx, activity_id, for_update=True)
     _require_status(a, "PLANNED", "REQUESTED", "SCHEDULED", "IN_PROGRESS", "PENDING_REVIEW", "PENDING_APPROVAL")
+    config.ensure_approval(ctx, "calibration", "CANCEL", plant_id=a.plant_id, gage_type_id=a.gage.gage_type_id)
     gage = gages.get_gage(ctx, a.gage_id, for_update=True)
     a.cancel_reason = reason
     if a.gage_prior_control_status and gage.control_status == ControlStatus.IN_CALIBRATION.value:

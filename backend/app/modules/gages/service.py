@@ -12,6 +12,7 @@ from sqlalchemy import Select, func, or_, select
 
 from app.core.errors import BusinessRuleError, ConflictError, NotFoundError, PermissionDeniedError
 from app.modules.audit import service as audit
+from app.modules.events import service as events
 from app.modules.gages.models import Gage, GageMovement, GageStatusHistory, GageType
 from app.modules.gages.schemas import (
     GageCreate,
@@ -51,6 +52,17 @@ ASSIGNMENT_FIELDS = ("plant_id", "department_id", "location", "responsible_user_
 # Other modules (calibration) can veto a manual status change, e.g. while an activity is
 # open. Each guard receives (ctx, gage, target) and raises an AppError to block.
 release_guards: list[Callable[[TenantContext, Gage, ControlStatus], None]] = []
+# Other modules (OOT) can hold a gage out of service after a calibration release. Each
+# holder returns a reason while the hold applies, else None.
+restriction_holders: list[Callable[[TenantContext, Gage], str | None]] = []
+
+
+def restriction_hold(ctx: TenantContext, gage: Gage) -> str | None:
+    for holder in restriction_holders:
+        reason = holder(ctx, gage)
+        if reason:
+            return reason
+    return None
 SORTS = {
     "gage_code": Gage.gage_code,
     "description": Gage.description,
@@ -284,7 +296,7 @@ def current_status(ctx: TenantContext, gage: Gage) -> GageStatus:
 
 def build_gage(ctx: TenantContext, body: GageCreate) -> Gage:
     """Validate and add a new gage to the session (no commit). Used by create and import."""
-    data = body.model_dump()
+    data = body.model_dump(exclude={"custom_fields"})
     data["gage_code"] = body.gage_code.strip().upper()
     _validate_refs(ctx, data, None)
 
@@ -316,11 +328,18 @@ def build_gage(ctx: TenantContext, body: GageCreate) -> Gage:
     ))
     ctx.audit(action="gage.created", entity_type="gage", entity_id=gage.id,
               changes=audit.snapshot(gage, AUDITED_FIELDS))
+    events.emit(ctx.db, ctx.organization_id, "gage.created", "gage", gage.id,
+                {"gage_code": gage.gage_code, "description": gage.description, "plant_id": gage.plant_id,
+                 "next_due_date": gage.next_due_date})
     return gage
 
 
-def create_gage(ctx: TenantContext, body: GageCreate) -> Gage:
+def create_gage(ctx: TenantContext, body: GageCreate, custom_fields: dict | None = None) -> Gage:
+    from app.modules.configuration import service as config  # avoids an import cycle at module load
+
+    config.apply_values(ctx, "gage", None, custom_fields, creating=True)
     gage = build_gage(ctx, body)
+    config.apply_values(ctx, "gage", gage.id, custom_fields, creating=True)
     ctx.db.commit()
     return get_gage(ctx, gage.id)
 

@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
 
@@ -78,6 +78,8 @@ class GageCreate(_Descriptive):
     # Initial record of the last calibration (legacy inventory). After registration the
     # date only changes through a released calibration activity.
     last_calibration_date: date | None = None
+    # Values of the organization's custom fields for gages (validated by the configuration module).
+    custom_fields: dict[str, Any] | None = None
 
 
 class GageUpdate(_Descriptive):

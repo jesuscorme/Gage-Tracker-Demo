@@ -128,7 +128,7 @@ def list_gages(
 
 @router.post("/gages", response_model=GageOut, status_code=201)
 def create_gage(body: GageCreate, ctx: TenantContext = Depends(require(P.GAGES_CREATE))):
-    return service.to_out(ctx, service.create_gage(ctx, body))
+    return service.to_out(ctx, service.create_gage(ctx, body, body.custom_fields))
 
 
 @router.get("/gages/{gage_id}", response_model=GageOut)

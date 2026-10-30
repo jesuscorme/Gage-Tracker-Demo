@@ -19,6 +19,7 @@ from sqlalchemy import and_, func, or_, select
 from app.core.errors import BusinessRuleError, ConflictError, NotFoundError, PermissionDeniedError
 from app.core.sequences import next_code
 from app.modules.audit import service as audit
+from app.modules.events import service as events
 from app.modules.competency import service as competency
 from app.modules.documents import service as documents
 from app.modules.gages import service as gages
@@ -174,6 +175,9 @@ def create_request(ctx: TenantContext, data: dict) -> ServiceRequest:
     notify(ctx, users_with_permission(ctx, P.LAB_MANAGE), "lab.request_submitted",
            f"New laboratory request {r.request_code}", f"{svc.name} · {r.part_number or ''} · {r.priority}",
            f"/laboratory/requests/{r.id}")
+    events.emit(ctx.db, ctx.organization_id, "lab.request_created", "service_request", r.id,
+                {"request_code": r.request_code, "service": svc.name, "part_number": r.part_number,
+                 "priority": r.priority, "requested_date": r.requested_date})
     ctx.db.commit()
     return get_request(ctx, r.id)
 
@@ -416,6 +420,9 @@ def complete_work_order(ctx: TenantContext, wo_id: uuid.UUID, observations: str 
     if observations:
         wo.observations = observations
     _event(ctx, wo, "COMPLETED", observations)
+    events.emit(ctx.db, ctx.organization_id, "lab.work_order_completed", "work_order", wo.id,
+                {"work_order_code": wo.work_order_code, "service_request_id": wo.service_request_id,
+                 "results": len(current_results(ctx, wo))})
     ctx.db.commit()
     return wo
 

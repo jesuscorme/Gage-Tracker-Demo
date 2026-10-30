@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { CustomFieldsCard } from "@/components/custom-fields";
 import { DocumentsPanel } from "@/components/documents";
+import { GageQuality } from "@/components/gage-quality";
 import { DueCell, RangeText } from "@/components/gage-bits";
 import { PlanCalibrationDialog, TransferDialog } from "@/components/gage-dialogs";
 import { Icon } from "@/components/icons";
@@ -18,7 +20,7 @@ import { useI18n } from "@/lib/i18n";
 import { CAL_RESULT_TONE, CAL_STATUS_TONE, transitionsFrom, type TransitionOption } from "@/lib/status";
 import type { Activity, AuditEvent, CalCertificate, Gage, Movement, StatusHistory } from "@/lib/types";
 
-type Tab = "general" | "calibrations" | "documents" | "history";
+type Tab = "general" | "calibrations" | "quality" | "documents" | "history";
 
 export default function GageRecordPage() {
   const { id } = useParams<{ id: string }>();
@@ -71,11 +73,13 @@ export default function GageRecordPage() {
             items={[
               { value: "general", label: t("common.general") },
               ...(can("calibration:read") ? [{ value: "calibrations" as Tab, label: t("gage.tab.calibrations") }] : []),
+              ...(can("msa:read") || can("oot:read") ? [{ value: "quality" as Tab, label: "MSA / OOT" }] : []),
               { value: "documents", label: t("common.documents") },
               { value: "history", label: t("common.history") },
             ]}
           />
-          {tab === "general" && <General g={g} />}
+          {tab === "general" && <><General g={g} /><div className="mt-4"><CustomFieldsCard entity="gage" id={g.id} canEdit={can("gages:update") && !retired} /></div></>}
+          {tab === "quality" && <GageQuality gageId={g.id} />}
           {tab === "calibrations" && <Calibrations gageId={g.id} />}
           {tab === "documents" && (
             <DocumentsPanel entityType="gage" entityId={g.id} canUpload={can("gages:update") && !retired} />
