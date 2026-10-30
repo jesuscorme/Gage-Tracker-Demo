@@ -200,7 +200,164 @@ def main():
     A("POST", f"/workflows/oot_case/{case['id']}/transitions", {"transition": "INVESTIGATE"})
     A("POST", f"/oot/cases/{case['id']}/analysis")
     A("POST", f"/oot/cases/{case['id']}/items", {"ref_code": "[DEMO] LOTE-2291", "description": "[DEMO] Lote enviado"})
+
+    extend(A, M, P, T, uid, people, org, gages, types, mty, slp, qa, svc, calibrate, study)
     print(f"Demo ready. Organization: [DEMO] Autopartes Demostración S.A. Users @{DOMAIN}; password from DEMO_PASSWORD.")
+
+
+def extend(A, M, P, T, uid, people, org, gages, types, mty, slp, qa, svc, calibrate, study):
+    """Volume and coverage so every screen of the application has something to show."""
+    from tests.test_engine_grr import NESTED_HAND
+    from tests.test_engine_other import TYPE1_VALUES, attribute_data
+
+    # Gages: due soon, overdue, retired, transferred, out of service; both plants.
+    more = [("DEMO-CAL-004", "CAL", mty, -350, "HIGH"), ("DEMO-CAL-005", "CAL", mty, -380, "MEDIUM"),
+            ("DEMO-CAL-006", "CAL", slp, -100, "LOW"), ("DEMO-CAL-007", "CAL", slp, -358, "MEDIUM"),
+            ("DEMO-MIC-003", "MIC", mty, -250, "HIGH"), ("DEMO-MIC-004", "MIC", slp, -370, "HIGH"),
+            ("DEMO-MIC-005", "MIC", mty, -15, "MEDIUM"), ("DEMO-IND-003", "IND", mty, -175, "MEDIUM"),
+            ("DEMO-IND-004", "IND", slp, -190, "LOW"), ("DEMO-IND-005", "IND", mty, -45, "HIGH"),
+            ("DEMO-TOR-002", "TOR", mty, -160, "HIGH"), ("DEMO-TOR-003", "TOR", slp, -185, "MEDIUM"),
+            ("DEMO-TOR-004", "TOR", mty, -20, "HIGH"), ("DEMO-PIN-003", "PIN", slp, -300, "LOW"),
+            ("DEMO-PIN-004", "PIN", mty, -360, "LOW"), ("DEMO-PIN-005", "PIN", mty, -400, "MEDIUM")]
+    owners = [uid["mario"], uid["tomás"], uid["laura"]]
+    for n, (code, t, plant, last, crit) in enumerate(more):
+        gages[code] = A("POST", "/gages", {
+            "gage_code": code, "description": f"[DEMO] {code}", "gage_type_id": types[t], "plant_id": plant,
+            "department_id": qa if plant == mty else None, "manufacturer": ("Demo Instruments", "Metro Demo")[n % 2],
+            "serial_number": f"SN-{code[-7:]}", "criticality": crit, "last_calibration_date": iso(last),
+            "location": f"[DEMO] Línea {n % 4 + 1}", "responsible_user_id": owners[n % 3]})["id"]
+    A("POST", f"/gages/{gages['DEMO-PIN-005']}/transitions", {"target": "INACTIVE", "reason": "[DEMO] Dado de baja"})
+    A("POST", f"/gages/{gages['DEMO-TOR-003']}/transitions", {"target": "OUT_OF_SERVICE",
+                                                              "reason": "[DEMO] Golpe en el cabezal"})
+    A("POST", f"/gages/{gages['DEMO-CAL-006']}/transfer", {"location": "[DEMO] Línea 2 · Ensamble",
+                                                           "responsible_user_id": uid["tomás"],
+                                                           "reason": "[DEMO] Reasignación de línea"})
+
+    # Calibration history for the charts, and calibrations in each intermediate state.
+    for code, days, found in (("DEMO-CAL-004", -5, "10.004"), ("DEMO-MIC-003", -12, "9.996"),
+                              ("DEMO-IND-003", -3, "10.010"), ("DEMO-TOR-002", -8, "10.001"),
+                              ("DEMO-CAL-007", -1, "9.990"), ("DEMO-MIC-005", -2, "10.000")):
+        calibrate(code, days, found)
+    for code, steps in (("DEMO-PIN-004", 1), ("DEMO-MIC-004", 2), ("DEMO-CAL-005", 3)):
+        act = A("POST", "/calibrations", {"gage_id": gages[code], "activity_type": "INTERNAL_CALIBRATION",
+                                          "planned_date": iso(2)})
+        A("POST", f"/calibrations/{act['id']}/request", {})
+        if steps >= 2:
+            A("POST", f"/calibrations/{act['id']}/schedule", {"scheduled_date": iso(2), "technician_id": uid["tomás"]})
+        if steps >= 3:
+            T("POST", f"/calibrations/{act['id']}/start")
+
+    std2 = A("POST", "/standards", {"standard_code": "DEMO-STD-TQ01", "description": "[DEMO] Analizador de torque",
+                                    "category": "REFERENCE_INSTRUMENT", "plant_id": slp,
+                                    "calibration_frequency_days": 365})
+    c.post(f"/api/v1/standards/{std2['id']}/certificates", headers=A.h,
+           data={"certificate_number": "DEMO-CERT-002", "issuer": "[DEMO] Laboratorio Acreditado",
+                 "calibration_date": iso(-340), "issue_date": iso(-338), "traceability": "[DEMO] Patrón nacional"},
+           files={"file": ("demo-cert-2.pdf", pdf_bytes("[DEMO] Certificado analizador"), "application/pdf")})
+
+    # Competencies: catalog, profiles, training and evaluation records.
+    comps = [A("POST", "/competency/competencies", {"code": code, "name": f"[DEMO] {name}", "validity_months": m})
+             for code, name, m in (("CAL-DIM", "Calibración dimensional", 24), ("MSA-GRR", "Estudios GRR", 36),
+                                   ("TORQUE", "Verificación de torquímetros", 12))]
+    for who, title, prof in (("tomás", "Técnico de metrología", ["INTERNAL_CALIBRATOR", "VERIFIER"]),
+                             ("laura", "Técnica de laboratorio", ["VERIFIER"]),
+                             ("mario", "Gerente de metrología", ["INTERNAL_CALIBRATOR"])):
+        M("PUT", f"/competency/people/{uid[who]}", {"job_title": f"[DEMO] {title}", "profile_types": prof})
+    for who, comp, kind, days, result in (
+            ("tomás", 0, "EVALUATION", -200, "PASSED"), ("tomás", 1, "TRAINING", -90, "PASSED"),
+            ("laura", 0, "TRAINING", -30, "PASSED"), ("laura", 2, "EVALUATION", -400, "PASSED"),
+            ("mario", 1, "EVALUATION", -60, "PASSED"), ("tomás", 2, "EVALUATION", -10, "FAILED")):
+        M("POST", "/competency/records", {"user_id": uid[who], "competency_id": comps[comp]["id"], "record_type": kind,
+                                          "title": comps[comp]["name"], "completed_on": iso(days), "result": result})
+
+    # Laboratory: requests waiting for a decision, one scheduled, and a technician absence.
+    S = Actor(login(people["sergio"][1]), org)
+    for pn, prio, decide in (("DEMO-PN-5120", "NORMAL", False), ("DEMO-PN-6033", "URGENT", False),
+                             ("DEMO-PN-7781", "HIGH", True)):
+        r = S("POST", "/lab/requests", {"plant_id": mty, "service_id": svc["id"], "part_number": pn,
+                                        "part_revision": "A", "description": f"[DEMO] Inspección {pn}",
+                                        "priority": prio, "requested_date": iso(7), "customer_type": "INTERNAL",
+                                        "customer_name": "[DEMO] Producción"})
+        if decide:
+            A("POST", f"/lab/requests/{r['id']}/decision", {"approve": True, "committed_date": iso(6)})
+            wo = A("POST", "/lab/work-orders", {"service_request_id": r["id"]})
+            A("POST", f"/lab/work-orders/{wo['id']}/schedule", {"technician_id": uid["laura"],
+                                                                "scheduled_start": f"{iso(1)}T15:00:00Z",
+                                                                "scheduled_end": f"{iso(1)}T18:00:00Z",
+                                                                "gage_ids": [gages["DEMO-CAL-004"]]})
+    M("POST", "/lab/absences", {"user_id": uid["laura"], "start_date": iso(9), "end_date": iso(10),
+                                "reason": "[DEMO] Capacitación externa"})
+
+    # MSA: the remaining methodologies (nested, attribute, stability, type 1).
+    study("GRR anidado (destructivo)", "GRR_NESTED_ANOVA", "DEMO-TOR-002", {},
+          [{"operator": o, "part": p, "trial": t, "value": v} for o, p, t, v in NESTED_HAND])
+    att_obs, att_design = attribute_data()
+    study("Atributos pasa/no pasa", "ATTRIBUTE_AGREEMENT", "DEMO-PIN-001",
+          {"categories": att_design["categories"], "part_reference": att_design["reference"],
+           "accept_category": "G", "reject_category": "NG"},
+          [{"operator": o["operator"], "part": o["part"], "trial": o["trial"], "category": o["value"]} for o in att_obs])
+    study("Estabilidad mensual", "STABILITY", "DEMO-CAL-001", {"subgroup_size": 1, "reference": 11.5},
+          [{"subgroup": i + 1, "trial": 1, "value": v} for i, v in enumerate([10, 12, 11, 13, 12, 11, 12, 10, 11, 12])])
+    study("Tipo 1 (Cg/Cgk)", "TYPE1", "DEMO-MIC-005", {"reference": 10.0, "tolerance": 0.1, "resolution": 0.001},
+          [{"trial": i + 1, "value": v} for i, v in enumerate(TYPE1_VALUES)])
+
+    # OOT: a second case taken through the whole workflow to CLOSED.
+    calibrate("DEMO-IND-001", -1, "10.04", left="10.00")
+    case = A("GET", f"/oot/cases?gage_id={gages['DEMO-IND-001']}")[0]
+
+    def flow(actor, code):
+        actor("POST", f"/workflows/oot_case/{case['id']}/transitions", {"transition": code, "comment": "[DEMO]"})
+    flow(A, "INVESTIGATE")
+    A("POST", f"/oot/cases/{case['id']}/analysis")
+    A("POST", f"/oot/cases/{case['id']}/items", {"ref_code": "[DEMO] LOTE-3310", "description": "[DEMO] Lote en almacén"})
+    for item in A("GET", f"/oot/cases/{case['id']}/items"):
+        A("POST", f"/oot/items/{item['id']}/assess", {"assessment": "NO_IMPACT", "note": "[DEMO] Sin impacto"})
+    flow(A, "EVALUATE_IMPACT")
+    A("PATCH", f"/oot/cases/{case['id']}", {"risk_level": "LOW", "risk_assessment": "[DEMO] Desviación de 0.02 mm",
+                                            "disposition": "[DEMO] Liberar lote", "customer_notification_required": False})
+    action = A("POST", f"/oot/cases/{case['id']}/actions", {
+        "action_type": "REINSPECTION", "description": "[DEMO] Remedir muestras retenidas", "owner_id": uid["tomás"],
+        "due_date": iso(3)})
+    flow(A, "PLAN_ACTIONS")
+    flow(A, "SUBMIT")
+    flow(M, "REVIEW")
+    flow(P, "APPROVE")
+    T("POST", f"/oot/actions/{action['id']}/finish", {"note": "[DEMO] Muestras dentro de tolerancia"})
+    A("POST", f"/oot/cases/{case['id']}/release-gage", {"reason": "[DEMO] As Left dentro de tolerancia"})
+    flow(A, "CLOSE")
+
+    # Configuration: versioned custom fields, a form and a business rule (second-person approval when required).
+    def propose(kind, definition, summary):
+        v = A("POST", "/config/items", {"kind": kind, "definition": definition, "change_summary": summary})
+        if v["status"] == "DRAFT":
+            P("POST", f"/config/versions/{v['id']}/approve", {"comment": "[DEMO] Aprobado"})
+    propose("CUSTOM_FIELD", {"entity_type": "gage", "key": "supplier_code", "label": "Código de proveedor",
+                             "field_type": "TEXT", "text_format": "UPPERCASE_CODE", "max_length": 12},
+            "[DEMO] Código de proveedor")
+    propose("CUSTOM_FIELD", {"entity_type": "gage", "key": "ppap_level", "label": "Nivel PPAP", "field_type": "LIST",
+                             "options": ["1", "2", "3", "4", "5"]}, "[DEMO] Nivel PPAP")
+    propose("FORM", {"entity_type": "gage", "sections": [
+        {"title": "Proveedor", "fields": ["supplier_code", "ppap_level", "manufacturer"]}]}, "[DEMO] Formulario")
+    propose("BUSINESS_RULE", {"entity_type": "msa_study", "name": "[DEMO] GRR máximo para revisión",
+                              "transitions": ["SUBMIT"], "conditions": [{"fact": "pct_sv_grr", "op": "lte", "value": 30}],
+                              "message": "GRR mayor a 30 %"}, "[DEMO] Regla GRR")
+    for code, sup, lvl in (("DEMO-MIC-001", "SUP-MITU", "3"), ("DEMO-CAL-001", "SUP-DEMO", "2")):
+        A("PUT", f"/custom-fields/gage/{gages[code]}", {"values": {"supplier_code": sup, "ppap_level": lvl}})
+
+    # Integrations: API key, webhook, simulated device readings, a committed import.
+    A("POST", "/integrations/api-clients", {"name": "[DEMO] ERP lectura", "role_code": "viewer"})
+    A("POST", "/integrations/webhooks", {"name": "[DEMO] ERP eventos", "url": f"https://erp.{DOMAIN}/hooks",
+                                         "event_types": ["gage.created"]})
+    dev = A("POST", "/integrations/devices", {"device_code": "DEMO-SIM-01", "name": "[DEMO] Simulador micrómetro",
+                                              "adapter": "simulator", "plant_id": mty, "gage_id": gages["DEMO-MIC-002"]})
+    A("POST", f"/integrations/devices/{dev['id']}/simulate", {"nominal": 10, "sigma": 0.002, "count": 25})
+    csv = ("Gage ID,Descripcion,Tipo,Planta,Frecuencia\nDEMO-IMP-001,[DEMO] Vernier importado,CAL,MTY,365\n"
+           "DEMO-IMP-002,[DEMO] Indicador importado,IND,SLP,180\n")
+    r = c.post("/api/v1/integrations/imports", headers=A.h, data={"importer": "gages"},
+               files={"file": ("demo-import.csv", csv.encode())})
+    if r.status_code != 201 or r.json()["status"] != "VALIDATED":
+        raise RuntimeError(f"import -> {r.status_code} {r.text[:400]}")
+    A("POST", f"/integrations/imports/{r.json()['id']}/commit")
 
 
 if __name__ == "__main__":
