@@ -45,7 +45,7 @@ def calculate(data: dict) -> dict:
     x = np.array(vals, dtype=float)
     warnings = []
     if len(x) < 25:
-        warnings.append("Bosch Booklet 10 asks for at least 25 readings (50 preferred); verify against your edition")
+        warnings.append("At least 25 readings are recommended (50 preferred)")
     r = t_interval(x, reference, alpha)
     s = r["s"]
     if s == 0:
