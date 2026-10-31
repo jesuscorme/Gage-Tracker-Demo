@@ -451,7 +451,6 @@ function Linearity({ run }: { run: MsaRun }) {
           [t("mc.constant"), <>{sig(reg.intercept)} <span className="text-ink-3">SE {sig(reg.se_intercept, 3)} · p {pval(m.intercept_p_value as Num)}</span></>],
           [t("mc.slope"), <>{sig(reg.slope)} <span className="text-ink-3">SE {sig(reg.se_slope, 3)} · p {pval(m.slope_p_value as Num)}</span></>],
           ["S", sig(reg.s)], ["R²", isNum(reg.r_squared) ? `${(reg.r_squared * 100).toFixed(1)} %` : "—"],
-          [t("mc.pctLinearity"), isNum(m.pct_linearity) ? `${(m.pct_linearity as number).toFixed(2)} %` : "—"],
         ]} />
         <StatTable title={t("mc.biasTable")} rows={[
           [t("mc.overall"), sig(mean(pts.map((p) => p.bias)))],
