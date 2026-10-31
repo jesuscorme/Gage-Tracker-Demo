@@ -55,7 +55,7 @@ export interface MsaRun {
   calculated_by: string; calculated_at: string; guidance: Guidance[]; observations: MsaObservationRow[];
 }
 export interface MsaObservationRow { operator?: string; part?: string; trial?: number; subgroup?: string; reference?: number; value: number | string }
-export interface Guidance { level: "ok" | "warn" | "bad" | "info"; es: string; en: string; ref: { es: string; en: string } }
+export interface Guidance { level: "ok" | "warn" | "bad" | "info"; es: string; en: string }
 export interface RunSummary { id: string; run_number: number; algorithm_version: string; engine_version: string;
   validation_status: string; input_hash: string; decision: Decision; calculated_at: string }
 export interface CriteriaRule { metric: string; op: string; value: number | boolean; outcome?: string; label?: string }

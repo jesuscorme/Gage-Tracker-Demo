@@ -1,21 +1,18 @@
 """Interpretation and recommendations for an MSA result, paraphrasing the AIAG MSA Reference
-Manual, 4th ed. (Spanish edition kept in the repository as "13. Manual MSA 4ta Ed.pdf").
+Manual, 4th ed. (Spanish edition, "13. Manual MSA 4ta Ed.pdf"); the page each text comes from is
+noted in the code, but no reference is shown to users. Guidance is derived on read from the
+stored metrics: it never changes a run, its evaluation or its decision, which remain governed by
+the organization's approved criteria."""
 
-Every item carries the manual page it comes from; anything not taken from the manual is labelled
-as such. Guidance is derived on read from the stored metrics: it never changes a run, its
-evaluation or its decision, which remain governed by the organization's approved criteria."""
+GUIDANCE_VERSION = "1.1.0"
 
-GUIDANCE_VERSION = "1.0.0"
-
-_MSA = {"es": "Manual MSA (AIAG, 4.ª ed., versión en español)", "en": "AIAG MSA Manual, 4th ed. (Spanish edition)"}
-
-
-def _ref(es: str, en: str | None = None) -> dict:
-    return {"es": f"{_MSA['es']}, {es}", "en": f"{_MSA['en']}, {en or es}"}
+def _ref(page: str, _en: str | None = None) -> str:
+    """Manual location of a text (Spanish edition); kept for maintenance, never returned to users."""
+    return page
 
 
-def _item(level: str, es: str, en: str, ref: dict) -> dict:
-    return {"level": level, "es": es, "en": en, "ref": ref}
+def _item(level: str, es: str, en: str, _ref: str) -> dict:
+    return {"level": level, "es": es, "en": en}
 
 
 def _fmt(v: float) -> str:

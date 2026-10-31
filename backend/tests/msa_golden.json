@@ -1300,7 +1300,7 @@
     "resolution_pct_tolerance": null,
     "tv": 1.146134546852138
    },
-   "model": "Average & Range (AIAG): EV = R-bar*K1; AV = sqrt((Xdiff*K2)^2 - EV^2/(n*r)); PV = Rp*K3",
+   "model": "Average & Range: EV = R-bar*K1; AV = sqrt((Xdiff*K2)^2 - EV^2/(n*r)); PV = Rp*K3",
    "tables": {
     "components": [
      {
@@ -2119,7 +2119,7 @@
     "stable": true,
     "violations": 0
    },
-   "model": "I-MR control chart with AIAG SPC Table II.1 special-cause criteria",
+   "model": "I-MR control chart with special-cause criteria",
    "tables": {
     "dispersion_out_of_control": [],
     "violations": []

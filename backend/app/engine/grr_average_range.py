@@ -38,7 +38,7 @@ def calculate(data: dict) -> dict:
     ev = rbar * k1
     av_sq = (x_diff * k2) ** 2 - ev ** 2 / (p * r)
     if av_sq < 0:
-        warnings.append("AV under the square root is negative; AV is set to 0 (AIAG convention)")
+        warnings.append("AV under the square root is negative; AV is set to 0")
     av = float(np.sqrt(max(av_sq, 0.0)))
     grr = float(np.hypot(ev, av))
     pv = rp * k3
@@ -57,7 +57,7 @@ def calculate(data: dict) -> dict:
     return clean({
         "method": METHOD,
         "algorithm_version": VERSION,
-        "model": "Average & Range (AIAG): EV = R-bar*K1; AV = sqrt((Xdiff*K2)^2 - EV^2/(n*r)); PV = Rp*K3",
+        "model": "Average & Range: EV = R-bar*K1; AV = sqrt((Xdiff*K2)^2 - EV^2/(n*r)); PV = Rp*K3",
         "design": {"operators": ops, "parts": parts, "trials": trials, "tolerance": tol, "study_var_multiplier": k},
         "metrics": metrics,
         "tables": {"components": rows,

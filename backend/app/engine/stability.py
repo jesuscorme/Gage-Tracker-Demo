@@ -170,7 +170,7 @@ def calculate(data: dict) -> dict:
     }
     return clean({
         "method": METHOD, "algorithm_version": VERSION,
-        "model": f"{chart} control chart with AIAG SPC Table II.1 special-cause criteria",
+        "model": f"{chart} control chart with special-cause criteria",
         "design": {"subgroup_size": n, "reference": reference, "rules": cfg, "subgroups": len(order)},
         "metrics": metrics,
         "tables": {"violations": [v | {"subgroup": order[v["index"]]} for v in violations],

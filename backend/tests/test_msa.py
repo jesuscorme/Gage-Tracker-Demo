@@ -72,10 +72,9 @@ def test_grr_study_end_to_end_with_versioned_criteria_and_report(msa, db):
     assert m["pct_sv_grr"] == pytest.approx(GRR_AIAG_AR["pct_grr"], abs=0.01) and m["ndc"] == 5
     assert m["pct_tolerance_grr"] == pytest.approx(100 * 6 * m["grr"] / 4.0)
     assert run1["gage_snapshot"]["gage_code"] == "MIC-01"
-    # AIAG guidance (Table II-D 1, p. 78) is attached on read and cites the manual page.
-    levels = {g["ref"]["es"].removeprefix("Manual MSA (AIAG, 4.ª ed., versión en español), "): g["level"]
-              for g in run1["guidance"]}
-    assert levels["Tabla II-D 1, p. 78"] == "warn" and levels["Cap. II, Secc. D, p. 78"] == "ok"
+    # Guidance is attached on read, without manual references.
+    assert [g["level"] for g in run1["guidance"]][:2] == ["warn", "ok"] and "ref" not in run1["guidance"][0]
+    assert not any("AIAG" in g["es"] or "Manual" in g["es"] for g in run1["guidance"])
     assert msa.get(f"/api/v1/msa/runs/{run1['id']}").json()["guidance"] == run1["guidance"]
     assert len(run1["observations"]) == 90 and {"operator", "part", "trial", "value"} <= set(run1["observations"][0])
 
@@ -198,7 +197,7 @@ def test_calculation_requires_permission_and_personal_authorization(msa, add_use
     assert viewer.post(f"/api/v1/msa/studies/{study['id']}/calculate").status_code == 403
     assert viewer.get(f"/api/v1/msa/studies/{study['id']}").status_code == 200
     run = msa.post(f"/api/v1/msa/studies/{study['id']}/calculate").json()
-    assert run["method"] == "BIAS" and any("at least 10" in w for w in run["results"]["warnings"])
+    assert run["method"] == "BIAS" and any("least 10 measurements" in w for w in run["results"]["warnings"])
 
 
 def test_unusable_gage_blocks_capture_and_studies_are_isolated(msa, make_org):

@@ -181,13 +181,13 @@ def main():
         A("POST", f"/msa/studies/{s['id']}/calculate")
         return s
 
-    grr = study("GRR diámetro (Promedio y Rango, datos AIAG)", "GRR_CROSSED_AR", "DEMO-MIC-002",
+    grr = study("GRR diámetro (Promedio y Rango)", "GRR_CROSSED_AR", "DEMO-MIC-002",
                 {"operators": 3, "parts": 10, "trials": 3, "tolerance": 4.0}, grr_observations())
-    study("GRR diámetro (ANOVA, datos AIAG)", "GRR_CROSSED_ANOVA", "DEMO-MIC-002",
+    study("GRR diámetro (ANOVA)", "GRR_CROSSED_ANOVA", "DEMO-MIC-002",
           {"operators": 3, "parts": 10, "trials": 3, "tolerance": 4.0}, grr_observations())
-    study("Sesgo (datos AIAG)", "BIAS", "DEMO-CAL-001", {"reference": BIAS_AIAG["reference"]},
+    study("Sesgo", "BIAS", "DEMO-CAL-001", {"reference": BIAS_AIAG["reference"]},
           [{"trial": i + 1, "value": v} for i, v in enumerate(BIAS_AIAG["values"])])
-    study("Linealidad (datos AIAG)", "LINEARITY", "DEMO-CAL-001", {}, linearity_observations())
+    study("Linealidad", "LINEARITY", "DEMO-CAL-001", {}, linearity_observations())
     A("POST", f"/workflows/msa_study/{grr['id']}/transitions", {"transition": "SUBMIT"})
     P("POST", f"/msa/studies/{grr['id']}/conclusion", {"decision": "CONDITIONAL",
                                                        "comment": "[DEMO] Uso limitado a inspección final"})

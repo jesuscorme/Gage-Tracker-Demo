@@ -330,7 +330,7 @@ function RunView({ run }: { run: MsaRun }) {
           <ul className="space-y-3">{run.guidance.map((g, i) => (
             <li key={i} className="flex gap-2.5">
               <ToneBadge tone={g.level}>{g.level === "ok" ? "✓" : g.level === "info" ? "i" : "!"}</ToneBadge>
-              <div className="text-[13px]">{g[lang]}<div className="mt-0.5 text-[11px] text-ink-3">{g.ref[lang]}</div></div>
+              <div className="text-[13px]">{g[lang]}</div>
             </li>))}</ul>
         </Card>
       )}

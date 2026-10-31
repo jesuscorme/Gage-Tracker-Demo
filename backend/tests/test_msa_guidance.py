@@ -1,6 +1,8 @@
 """AIAG MSA 4th ed. guidance: thresholds of Table II-D 1 (p. 78), ndc (p. 78), Table III-C 6 (p. 140),
 kappa (p. 137), bias (pp. 88-89), linearity (p. 98), stability (p. 86); every item cites a page."""
 
+import re
+
 import pytest
 
 from app.modules.msa.guidance import guidance
@@ -13,7 +15,7 @@ def levels(method, **metrics):
 @pytest.mark.parametrize("pct, level", [(9.99, "ok"), (10.0, "warn"), (30.0, "warn"), (30.01, "bad")])
 def test_grr_bands_follow_table_ii_d_1(pct, level):
     g = guidance("GRR_CROSSED_ANOVA", {"metrics": {"pct_sv_grr": pct}})
-    assert g[0]["level"] == level and g[0]["ref"]["es"].endswith("Tabla II-D 1, p. 78")
+    assert g[0]["level"] == level and "%GRR" in g[0]["es"]
     assert g[-1]["level"] == "info" and "NO es una práctica aceptable" in g[-1]["es"]
 
 
@@ -27,7 +29,7 @@ def test_dominant_component_recommendation_only_when_grr_is_not_acceptable():
         "pct_sv_grr": 8, "pct_sv_ev": 7, "pct_sv_av": 3}}))
     ev = guidance("GRR_CROSSED_AR", {"metrics": {"pct_sv_grr": 20, "pct_sv_ev": 18, "pct_sv_av": 8}})
     av = guidance("GRR_CROSSED_AR", {"metrics": {"pct_sv_grr": 20, "pct_sv_ev": 8, "pct_sv_av": 18}})
-    assert any("repetibilidad" in g["es"] and g["ref"]["es"].endswith("p. 128") for g in ev)
+    assert any("repetibilidad" in g["es"] for g in ev)
     assert any("reproducibilidad" in g["es"] for g in av)
 
 
@@ -55,7 +57,7 @@ def test_location_and_stability_methods():
     assert levels("BIAS") == [] and guidance("UNKNOWN", {"metrics": {}}) == []
 
 
-def test_every_item_cites_a_source_in_both_languages():
+def test_every_item_is_bilingual_without_references():
     samples = {"GRR_CROSSED_AR": {"pct_sv_grr": 40, "ndc": 2, "pct_sv_ev": 30, "pct_sv_av": 20, "ranges_out_of_control": 1},
                "BIAS": {"bias_significant": True}, "LINEARITY": {"zero_line_within_bands": False},
                "STABILITY": {"stable": False}, "ATTRIBUTE_AGREEMENT": {"min_effectiveness_pct": 85,
@@ -63,6 +65,7 @@ def test_every_item_cites_a_source_in_both_languages():
                }
     for method, m in samples.items():
         for g in guidance(method, {"metrics": m}):
-            assert g["es"] and g["en"] and g["ref"]["es"] and g["ref"]["en"]
+            assert g["es"] and g["en"] and set(g) == {"level", "es", "en"}
+            assert not re.search(r"AIAG|[Mm]anual|\bpp?\. \d", g["es"] + g["en"])
             assert g["level"] in {"ok", "warn", "bad", "info"}
     assert guidance("TYPE1", {"metrics": {"cg": 1.5}}) == []

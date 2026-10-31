@@ -59,7 +59,7 @@ def calculate(data: dict) -> dict:
     parts = sorted(refs, key=lambda p: (refs[p], natural(p)))
     counts = {p: sum(1 for r in rows if r[0] == p) for p in parts}
     if len(parts) < 5 or min(counts.values()) < 10:
-        warnings.append("AIAG suggests at least 5 parts measured at least 10 times each for a linearity study")
+        warnings.append("At least 5 parts measured at least 10 times each are recommended for a linearity study")
     if len(set(counts.values())) > 1:
         warnings.append("Parts have different numbers of measurements")
 

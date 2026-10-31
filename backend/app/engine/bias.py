@@ -68,7 +68,7 @@ def calculate(data: dict) -> dict:
     x = np.array(vals, dtype=float)
     warnings = []
     if len(x) < 10:
-        warnings.append("AIAG recommends at least 10 measurements for a bias study")
+        warnings.append("At least 10 measurements are recommended for a bias study")
     r = t_interval(x, reference, alpha)
     if r["s"] == 0:
         warnings.append("All readings are identical: repeatability is zero and the t test is undefined")
