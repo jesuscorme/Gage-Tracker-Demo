@@ -77,6 +77,7 @@ def test_grr_study_end_to_end_with_versioned_criteria_and_report(msa, db):
               for g in run1["guidance"]}
     assert levels["Tabla II-D 1, p. 78"] == "warn" and levels["Cap. II, Secc. D, p. 78"] == "ok"
     assert msa.get(f"/api/v1/msa/runs/{run1['id']}").json()["guidance"] == run1["guidance"]
+    assert len(run1["observations"]) == 90 and {"operator", "part", "trial", "value"} <= set(run1["observations"][0])
 
     grr_criteria(msa, msa.manager)
     run2 = msa.post(f"/api/v1/msa/studies/{study['id']}/calculate").json()

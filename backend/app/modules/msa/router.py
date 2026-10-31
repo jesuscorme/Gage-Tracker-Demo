@@ -220,11 +220,14 @@ class RunOut(BaseModel):
     calculated_by: uuid.UUID
     calculated_at: datetime
     guidance: list = []
+    observations: list = []
 
 
 def _run_out(run) -> RunOut:
+    """Single-run view: adds the AIAG guidance and the exact observations used, which the charts need."""
     out = RunOut.model_validate(run)
     out.guidance = guidance.guidance(run.method, run.results)
+    out.observations = run.input_snapshot.get("observations") or []
     return out
 
 

@@ -2,9 +2,9 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart, LineChart } from "@/components/charts";
 import { CustomFieldsCard } from "@/components/custom-fields";
 import { DocumentsPanel } from "@/components/documents";
+import { MsaCharts } from "@/components/msa-charts";
 import { DesignFields, designPayload, designState, type Strs } from "@/components/msa-design";
 import {
   Alert, Button, Card, Check, EmptyState, ErrorState, Field, FileInput, Input, Loading, Modal, PageHeader, Select, Spec,
@@ -277,8 +277,6 @@ const n4 = (v: unknown) => (typeof v === "number" ? (Math.abs(v) >= 1000 ? v.toF
 function RunView({ run }: { run: MsaRun }) {
   const { t, fmtDateTime, lang } = useI18n();
   const r: MsaResults = run.results;
-  const fam = FAMILY[run.method];
-  const ch = r.charts;
   return (
     <div className="space-y-4">
       <Card title={`${t("msa.run", { n: run.run_number })} · ${fmtDateTime(run.calculated_at)}`}
@@ -316,34 +314,7 @@ function RunView({ run }: { run: MsaRun }) {
         </Card>
       )}
       <Card title={t("msa.charts")}>
-        <div className="grid gap-4 lg:grid-cols-2">
-          {fam === "VARIABLE_GRR" && r.tables.components && (
-            <BarChart title={t("msa.chart.components")} labels={["EV", "AV", "GRR", "PV"]} unit="%"
-              values={["EV", "AV", "GRR", "PV"].map((k) => (r.tables.components as { source: string; pct_study_var: number | null }[]).find((c) => c.source === k)?.pct_study_var ?? null)}
-              refLines={[{ value: 10, label: "10 %" }, { value: 30, label: "30 %" }]} />
-          )}
-          {ch.range_chart && <LineChart title={t("msa.chart.range")} series={ch.range_chart.operators.map((o: string, i: number) => ({ label: o, values: ch.range_chart.values[i] }))}
-            hlines={[{ value: ch.range_chart.center, label: "R̄" }, { value: ch.range_chart.ucl, label: "UCL", tone: "limit" }]} xLabels={ch.range_chart.parts} />}
-          {ch.average_chart && <LineChart title={t("msa.chart.average")} series={ch.average_chart.operators.map((o: string, i: number) => ({ label: o, values: ch.average_chart.values[i] }))}
-            hlines={[{ value: ch.average_chart.ucl, label: "UCL", tone: "limit" }, { value: ch.average_chart.center, label: "X̄" }, { value: ch.average_chart.lcl, label: "LCL", tone: "limit" }]} xLabels={ch.average_chart.parts} />}
-          {ch.part_means && <LineChart title={t("msa.chart.average")} series={ch.part_means.operators.map((o: string, i: number) => ({ label: o, values: ch.part_means.values[i] }))} />}
-          {fam === "ATTRIBUTE" && <BarChart title="% within / vs reference" labels={(r.tables.within as { operator: string }[]).map((w) => w.operator)}
-            values={(r.tables.within as { pct: number | null }[]).map((w) => w.pct)} unit="%" />}
-          {fam === "BIAS" && <LineChart title={t("msa.chart.run")} series={[{ label: "x", values: ch.values }]} hlines={[{ value: ch.reference, label: "ref", tone: "ref" }]} />}
-          {fam === "BIAS" && <BarChart title="Histogram" labels={(ch.histogram.edges as number[]).slice(0, -1).map((e) => e.toFixed(3))} values={ch.histogram.counts} />}
-          {fam === "TYPE1" && <LineChart title={t("msa.chart.run")} series={[{ label: "x", values: ch.run.values }]}
-            hlines={[{ value: ch.run.upper, label: "+K/2", tone: "limit" }, { value: ch.run.reference, label: "ref", tone: "ref" }, { value: ch.run.lower, label: "−K/2", tone: "limit" }]} />}
-          {fam === "LINEARITY" && <LineChart title={t("msa.chart.bias")} series={[
-            { label: "fit", values: (ch.bands as { fit: number }[]).map((b) => b.fit) },
-            { label: "lower", values: (ch.bands as { lower: number }[]).map((b) => b.lower) },
-            { label: "upper", values: (ch.bands as { upper: number }[]).map((b) => b.upper) },
-            { label: "avg bias", values: (ch.averages as { average_bias: number }[]).map((a) => a.average_bias), points: true },
-          ]} hlines={[{ value: 0, label: "0", tone: "ref" }]} xLabels={(ch.bands as { reference: number }[]).map((b) => b.reference)} />}
-          {fam === "STABILITY" && <LineChart title={t("msa.chart.location")} series={[{ label: ch.location.kind, values: ch.location.values }]}
-            hlines={[{ value: ch.location.ucl, label: "UCL", tone: "limit" }, { value: ch.location.center, label: "CL" }, { value: ch.location.lcl, label: "LCL", tone: "limit" }, { value: ch.location.reference, label: "ref", tone: "ref" }]} />}
-          {fam === "STABILITY" && <LineChart title={t("msa.chart.dispersion")} series={[{ label: ch.dispersion.kind, values: ch.dispersion.values }]}
-            hlines={[{ value: ch.dispersion.ucl, label: "UCL", tone: "limit" }, { value: ch.dispersion.center, label: "CL" }]} />}
-        </div>
+        <MsaCharts run={run} />
       </Card>
       <Card title={t("msa.evaluation")}>
         {!run.evaluation ? <Alert tone="info">{t("msa.noCriteria")}</Alert> : (
