@@ -637,17 +637,12 @@ def evaluate(criteria: MsaCriteriaSet | None, results: dict) -> tuple[list[dict]
 CRITERIA_TEMPLATES = [
     {"name": "AIAG MSA 4th ed. - GRR (template)", "methods": ["GRR_CROSSED_AR", "GRR_CROSSED_ANOVA",
                                                               "GRR_NESTED_ANOVA"],
-     "source": "AIAG MSA Reference Manual 4th ed. (Spanish edition), Chapter II Section D, Table II-D 1, p. 78: "
-               "%GRR under 10% acceptable, 10-30% may be acceptable (customer approval), over 30% unacceptable; "
-               "ndc >= 5 (p. 78). The %GRR guideline alone is not an acceptable practice (p. 78); agree final "
-               "criteria with the customer before approving.",
+     "source": "AIAG MSA 4th ed., Table II-D 1, p. 78",
      "rules": [{"metric": "pct_sv_grr", "op": "lte", "value": 30, "outcome": "NOT_ACCEPTABLE", "label": "%GRR <= 30"},
                {"metric": "pct_sv_grr", "op": "lt", "value": 10, "outcome": "CONDITIONAL", "label": "%GRR < 10"},
                {"metric": "ndc", "op": "gte", "value": 5, "outcome": "NOT_ACCEPTABLE", "label": "ndc >= 5"}]},
     {"name": "AIAG MSA 4th ed. - Attribute (template)", "methods": ["ATTRIBUTE_AGREEMENT"],
-     "source": "AIAG MSA Reference Manual 4th ed. (Spanish edition), Chapter III Section C: effectiveness, miss "
-               "rate and false alarm rate per Table III-C 6, p. 140 (the manual presents it as an example); "
-               "kappa > 0.75 good to excellent agreement, < 0.4 poor, p. 137.",
+     "source": "AIAG MSA 4th ed., Table III-C 6, p. 140",
      "rules": [{"metric": "min_effectiveness_pct", "op": "gte", "value": 80, "outcome": "NOT_ACCEPTABLE"},
                {"metric": "min_effectiveness_pct", "op": "gte", "value": 90, "outcome": "CONDITIONAL"},
                {"metric": "max_miss_rate_pct", "op": "lte", "value": 5, "outcome": "NOT_ACCEPTABLE"},
@@ -656,21 +651,16 @@ CRITERIA_TEMPLATES = [
                {"metric": "max_false_alarm_rate_pct", "op": "lte", "value": 5, "outcome": "CONDITIONAL"},
                {"metric": "min_kappa_vs_reference", "op": "gt", "value": 0.75, "outcome": "CONDITIONAL"}]},
     {"name": "Statistical bias test (template)", "methods": ["BIAS"],
-     "source": "AIAG MSA Reference Manual 4th ed. (Spanish edition), Chapter III Section B, pp. 88-89: bias "
-               "acceptable at level alpha when zero lies within the 1 - alpha confidence interval; alpha other than "
-               "0.05 requires customer agreement (p. 89).",
+     "source": "AIAG MSA 4th ed., pp. 88-89",
      "rules": [{"metric": "bias_significant", "op": "eq", "value": False, "outcome": "NOT_ACCEPTABLE"}]},
     {"name": "Statistical linearity test (template)", "methods": ["LINEARITY"],
-     "source": "AIAG MSA Reference Manual 4th ed. (Spanish edition), Chapter III Section B, p. 98: the "
-               "bias = 0 line must lie entirely within the confidence bands of the fitted line.",
+     "source": "AIAG MSA 4th ed., p. 98",
      "rules": [{"metric": "zero_line_within_bands", "op": "eq", "value": True, "outcome": "NOT_ACCEPTABLE"}]},
     {"name": "Stability without special causes (template)", "methods": ["STABILITY"],
-     "source": "AIAG SPC Manual 2nd ed., Table II.1, p. 75 (criteria selected in the study parameters); "
-               "AIAG MSA Manual 4th ed. (Spanish edition), p. 86: no numeric stability index beyond control charts.",
+     "source": "AIAG SPC 2nd ed., Table II.1, p. 75",
      "rules": [{"metric": "stable", "op": "eq", "value": True, "outcome": "NOT_ACCEPTABLE"}]},
     {"name": "Type 1 Cg/Cgk >= 1.33 (template)", "methods": ["TYPE1"],
-     "source": "Robert Bosch GmbH Booklet No. 10 (Cg, Cgk >= 1.33 with K = 20 %, L = 6). Verify against "
-               "your edition and customer requirements.",
+     "source": "Bosch Booklet No. 10",
      "rules": [{"metric": "cg", "op": "gte", "value": 1.33, "outcome": "NOT_ACCEPTABLE"},
                {"metric": "cgk", "op": "gte", "value": 1.33, "outcome": "NOT_ACCEPTABLE"}]},
 ]

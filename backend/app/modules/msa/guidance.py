@@ -171,18 +171,10 @@ def _attribute(m: dict) -> list[dict]:
     return out
 
 
-def _type1(m: dict) -> list[dict]:
-    return [_item("info", "El estudio tipo 1 (Cg/Cgk) no está en el manual AIAG MSA; el criterio Cg, Cgk ≥ 1.33 proviene de "
-                          "Bosch Booklet 10 o de los requisitos del cliente.",
-                  "The type 1 study (Cg/Cgk) is not in the AIAG MSA manual; the Cg, Cgk ≥ 1.33 criterion comes from "
-                  "Bosch Booklet 10 or customer requirements.",
-                  {"es": "No proviene del manual AIAG MSA", "en": "Not from the AIAG MSA manual"})]
-
-
 _BY_METHOD = {
     "GRR_CROSSED_AR": _grr, "GRR_CROSSED_ANOVA": _grr, "GRR_NESTED_ANOVA": _grr,
     "BIAS": _bias, "LINEARITY": _linearity, "STABILITY": _stability,
-    "ATTRIBUTE_AGREEMENT": _attribute, "TYPE1": _type1,
+    "ATTRIBUTE_AGREEMENT": _attribute,
 }
 
 

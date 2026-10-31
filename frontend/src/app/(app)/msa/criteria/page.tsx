@@ -33,7 +33,6 @@ export default function CriteriaPage() {
               <ul className="mt-2 space-y-0.5 font-mono text-[12px]">
                 {c.rules.map((r, i) => <li key={i}>{r.metric} {r.op} {String(r.value)} → {r.outcome ?? "NOT_ACCEPTABLE"}</li>)}
               </ul>
-              <p className="mt-2 text-[11px] text-ink-3">{c.source}</p>
               <p className="mt-1 text-[11px] text-ink-3">{users.names[c.created_by]} · {fmtDateTime(c.created_at)}
                 {c.approved_at && ` · ✓ ${users.names[c.approved_by ?? ""] ?? ""} ${fmtDateTime(c.approved_at)}`}</p>
               <div className="mt-2 flex gap-2">

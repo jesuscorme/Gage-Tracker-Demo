@@ -60,9 +60,9 @@ def test_every_item_cites_a_source_in_both_languages():
                "BIAS": {"bias_significant": True}, "LINEARITY": {"zero_line_within_bands": False},
                "STABILITY": {"stable": False}, "ATTRIBUTE_AGREEMENT": {"min_effectiveness_pct": 85,
                                                                       "min_kappa_vs_reference": 0.5},
-               "TYPE1": {"cg": 1.5}}
+               }
     for method, m in samples.items():
         for g in guidance(method, {"metrics": m}):
             assert g["es"] and g["en"] and g["ref"]["es"] and g["ref"]["en"]
             assert g["level"] in {"ok", "warn", "bad", "info"}
-    assert "No proviene del manual" in guidance("TYPE1", {"metrics": {}})[0]["ref"]["es"]
+    assert guidance("TYPE1", {"metrics": {"cg": 1.5}}) == []

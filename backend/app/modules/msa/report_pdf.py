@@ -333,7 +333,7 @@ def render(snap: dict) -> bytes:
     pdf.section("Acceptance criteria and conclusion")
     crit = snap.get("criteria")
     if crit:
-        pdf.kv([("Criteria", f"{crit['name']} v{crit['version']} ({crit['scope']})"), ("Source", crit["source"]),
+        pdf.kv([("Criteria", f"{crit['name']} v{crit['version']} ({crit['scope']})"),
                 ("Approved", f"{crit.get('approved_at') or '-'}")])
         pdf.table(["Metric", "Rule", "Actual", "Status"],
                   [[e["metric"], f"{e['op']} {e['value']}", fmt(e["actual"], 4), e["status"]]

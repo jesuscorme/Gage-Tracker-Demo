@@ -319,7 +319,6 @@ function RunView({ run }: { run: MsaRun }) {
       <Card title={t("msa.evaluation")}>
         {!run.evaluation ? <Alert tone="info">{t("msa.noCriteria")}</Alert> : (
           <>
-            <p className="mb-2 text-[12px] text-ink-3">{run.criteria_snapshot?.name} v{run.criteria_snapshot?.version} · {run.criteria_snapshot?.source}</p>
             <table className="data-table"><thead><tr><th>{t("crit.metric")}</th><th>{t("crit.op")}</th><th>{t("crit.value")}</th><th>Actual</th><th>{t("common.status")}</th></tr></thead>
               <tbody>{run.evaluation.map((e, i) => <tr key={i}><td>{e.label ?? e.metric}</td><td>{e.op}</td><td className="tabular">{String(e.value)}</td>
                 <td className="tabular">{n4(e.actual)}</td><td><ToneBadge tone={e.status === "PASS" ? "ok" : e.status === "CONDITIONAL" ? "warn" : e.status === "NOT_EVALUATED" ? "mute" : "bad"}>{e.status}</ToneBadge></td></tr>)}</tbody></table>

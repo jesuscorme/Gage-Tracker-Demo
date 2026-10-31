@@ -40,7 +40,7 @@ Motor: `backend/app/engine/` (versión del motor **1.0.0**). Independiente de la
 | Estabilidad | Sin índice numérico; estable antes de cualquier otro análisis; causas | p. 86; p. 77; p. 52 |
 | Atributos | Efectividad ≥ 90 / ≥ 80 / < 80 %; pérdida ≤ 2 / ≤ 5 / > 5 %; falsa alarma ≤ 5 / ≤ 10 / > 10 % | Tabla III-C 6, p. 140 |
 | Atributos | Kappa > 0.75 bueno a excelente; < 0.4 pobre | p. 137 |
-| Tipo 1 | Se indica que **no** proviene del manual AIAG (Bosch Booklet 10 / cliente) | — |
+| Tipo 1 | Sin interpretación (el método no está en el manual AIAG MSA) | — |
 
 La plantilla de criterios GRR se corrigió: %GRR = 10 % exacto ahora es CONDITIONAL («del 10 al 30 porciento»), antes era aceptable. Los criterios ya aprobados en cada organización no se modifican; el cambio aplica a los que se creen desde la plantilla.
 
