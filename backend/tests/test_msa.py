@@ -72,6 +72,11 @@ def test_grr_study_end_to_end_with_versioned_criteria_and_report(msa, db):
     assert m["pct_sv_grr"] == pytest.approx(GRR_AIAG_AR["pct_grr"], abs=0.01) and m["ndc"] == 5
     assert m["pct_tolerance_grr"] == pytest.approx(100 * 6 * m["grr"] / 4.0)
     assert run1["gage_snapshot"]["gage_code"] == "MIC-01"
+    # AIAG guidance (Table II-D 1, p. 78) is attached on read and cites the manual page.
+    levels = {g["ref"]["es"].removeprefix("Manual MSA (AIAG, 4.ª ed., versión en español), "): g["level"]
+              for g in run1["guidance"]}
+    assert levels["Tabla II-D 1, p. 78"] == "warn" and levels["Cap. II, Secc. D, p. 78"] == "ok"
+    assert msa.get(f"/api/v1/msa/runs/{run1['id']}").json()["guidance"] == run1["guidance"]
 
     grr_criteria(msa, msa.manager)
     run2 = msa.post(f"/api/v1/msa/studies/{study['id']}/calculate").json()

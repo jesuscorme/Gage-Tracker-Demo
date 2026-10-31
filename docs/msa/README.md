@@ -19,10 +19,30 @@ Motor: `backend/app/engine/` (versión del motor **1.0.0**). Independiente de la
 
 ## Fuentes y limitaciones de las referencias
 
-- **AIAG MSA Reference Manual, 4ª ed. (2010)**: el manual **no está disponible en el equipo de desarrollo**. Los conjuntos de datos AIAG (GRR, sesgo, linealidad) se transcribieron y la transcripción se verificó reproduciendo **todos** los valores intermedios que el manual publica (promedios y rangos por evaluador, R̄, X̄diff, Rp, SS del ANOVA, desviación de repetibilidad, intervalo de confianza del sesgo, sesgo promedio por pieza). Las referencias citan capítulo y sección; **los números de página no se verificaron** contra el texto. Recomendación: confirmar contra la copia controlada de la organización.
+- **AIAG MSA Reference Manual, 4ª ed. (2010)**, versión en español (`13. Manual MSA 4ta Ed.pdf`, copia del usuario, no versionada). Los conjuntos de datos AIAG (GRR, sesgo, linealidad) se verificaron reproduciendo **todos** los valores intermedios que el manual publica. Las páginas citadas son las **impresas en la versión en español** (página del PDF − 8, comprobado en cinco puntos); la edición en inglés puede tener otra paginación.
 - **AIAG SPC Manual, 2ª ed. (2005)**: disponible localmente. Constantes A2, d2, D3, D4, E2 tomadas de Apéndice E, pp. 181-182; criterios de causas especiales de la Tabla II.1, p. 75.
 - **Robert Bosch GmbH, Booklet No. 10** (Cg/Cgk): no disponible localmente; se implementan las fórmulas con K y L configurables. Verificar contra la edición vigente.
 - **Fleiss (1971)**: ejemplo de 10 sujetos × 14 evaluadores × 5 categorías, κ publicado = 0.210.
+
+## Interpretación y recomendaciones (AIAG MSA)
+
+`app/modules/msa/guidance.py` (versión 1.0.0) produce, para cada cálculo, una interpretación y recomendaciones en español e inglés, cada una con su página del manual. Se muestra en la pestaña Resultados y en el reporte PDF. Se calcula a partir de los indicadores guardados: **no modifica** el cálculo, la evaluación ni la decisión, que siguen dependiendo de los criterios aprobados por la organización.
+
+| Método | Lineamiento | Referencia (versión en español) |
+|---|---|---|
+| GRR | %GRR < 10 % aceptable; 10–30 % puede ser aceptable (decidir por importancia y costos; aprobación del cliente); > 30 % inaceptable (mejorar; estrategia de promediar lecturas) | Tabla II-D 1, p. 78 |
+| GRR | ndc ≥ 5 | Cap. II, Secc. D, p. 78 |
+| GRR | La guía de %GRR por sí sola no es práctica aceptable; criterios finales acordados con el cliente | pp. 77-78 |
+| GRR (si %GRR ≥ 10) | Repetibilidad dominante → mantenimiento, rigidez, sujeción, variación dentro de la parte; reproducibilidad dominante → entrenamiento, escala del gage, dispositivo | p. 128 |
+| GRR | Rangos fuera de control → consistencia de evaluadores | p. 108 |
+| Sesgo | Aceptable si el cero cae en el IC 1 − α; causas de sesgo y recalibración o corrección con concurrencia del cliente | pp. 88-89, p. 95 |
+| Linealidad | La línea «sesgo = 0» totalmente dentro de las bandas; causas | p. 98; pp. 53-54 |
+| Estabilidad | Sin índice numérico; estable antes de cualquier otro análisis; causas | p. 86; p. 77; p. 52 |
+| Atributos | Efectividad ≥ 90 / ≥ 80 / < 80 %; pérdida ≤ 2 / ≤ 5 / > 5 %; falsa alarma ≤ 5 / ≤ 10 / > 10 % | Tabla III-C 6, p. 140 |
+| Atributos | Kappa > 0.75 bueno a excelente; < 0.4 pobre | p. 137 |
+| Tipo 1 | Se indica que **no** proviene del manual AIAG (Bosch Booklet 10 / cliente) | — |
+
+La plantilla de criterios GRR se corrigió: %GRR = 10 % exacto ahora es CONDITIONAL («del 10 al 30 porciento»), antes era aceptable. Los criterios ya aprobados en cada organización no se modifican; el cambio aplica a los que se creen desde la plantilla.
 
 ## Reglas comunes
 

@@ -52,8 +52,9 @@ export interface MsaRun {
   engine_version: string; validation_status: string; input_hash: string; results: MsaResults;
   criteria_set_id: string | null; criteria_snapshot: { name: string; version: number; source: string; scope: string } | null;
   evaluation: Evaluation[] | null; decision: Decision; gage_snapshot: Record<string, string | null>;
-  calculated_by: string; calculated_at: string;
+  calculated_by: string; calculated_at: string; guidance: Guidance[];
 }
+export interface Guidance { level: "ok" | "warn" | "bad" | "info"; es: string; en: string; ref: { es: string; en: string } }
 export interface RunSummary { id: string; run_number: number; algorithm_version: string; engine_version: string;
   validation_status: string; input_hash: string; decision: Decision; calculated_at: string }
 export interface CriteriaRule { metric: string; op: string; value: number | boolean; outcome?: string; label?: string }

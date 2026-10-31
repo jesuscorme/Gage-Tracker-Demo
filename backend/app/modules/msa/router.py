@@ -12,7 +12,7 @@ from app.modules.configuration import service as config
 from app.modules.documents import service as documents
 from app.modules.identity.deps import TenantContext, require
 from app.modules.identity.permissions import P
-from app.modules.msa import service
+from app.modules.msa import guidance, service
 from app.modules.msa.models import CRITERIA_SCOPES, DECISIONS, METHODS
 
 router = APIRouter(tags=["msa"])
@@ -219,6 +219,13 @@ class RunOut(BaseModel):
     gage_snapshot: dict
     calculated_by: uuid.UUID
     calculated_at: datetime
+    guidance: list = []
+
+
+def _run_out(run) -> RunOut:
+    out = RunOut.model_validate(run)
+    out.guidance = guidance.guidance(run.method, run.results)
+    return out
 
 
 class RunSummary(BaseModel):
@@ -384,7 +391,7 @@ def validate(study_id: uuid.UUID, ctx: TenantContext = Depends(require(P.MSA_REA
 
 @router.post("/msa/studies/{study_id}/calculate", response_model=RunOut, status_code=201)
 def calculate(study_id: uuid.UUID, ctx: TenantContext = Depends(require(P.MSA_CALCULATE))):
-    return service.calculate(ctx, study_id)
+    return _run_out(service.calculate(ctx, study_id))
 
 
 @router.get("/msa/studies/{study_id}/runs", response_model=list[RunSummary])
@@ -394,7 +401,7 @@ def list_runs(study_id: uuid.UUID, ctx: TenantContext = Depends(require(P.MSA_RE
 
 @router.get("/msa/runs/{run_id}", response_model=RunOut)
 def get_run(run_id: uuid.UUID, ctx: TenantContext = Depends(require(P.MSA_READ))):
-    return service.get_run(ctx, run_id)
+    return _run_out(service.get_run(ctx, run_id))
 
 
 @router.post("/msa/runs/{run_id}/verify")

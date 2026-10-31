@@ -27,7 +27,7 @@ Defectos de bloques anteriores: `PROGRESS_REPORT_02.md` (sección de errores cor
 | O-04 | MEDIUM | El bloqueo por cuenta puede usarse para bloquear a un usuario conocido; no hay límite por IP | Límite por IP en el proxy o WAF |
 | O-05 | MEDIUM | Anti-SSRF de webhooks solo literal (sin resolución DNS) | Validar la IP resuelta antes de cada envío |
 | O-06 | MEDIUM | Almacenamiento de documentos solo en disco o volumen (sin S3/Blob) | Adaptador de almacenamiento de objetos para la nube |
-| O-07 | MEDIUM | Páginas del manual AIAG MSA citadas sin verificar (manual no disponible) | Verificar contra la copia controlada |
+| O-07 | ~~MEDIUM~~ CERRADO 2026-10-31 | Páginas del manual AIAG MSA citadas sin verificar | Verificadas contra la versión en español de la 4.ª ed. (`13. Manual MSA 4ta Ed.pdf`); ver `docs/msa/README.md` |
 | O-08 | MEDIUM | Sin prueba de penetración externa | Contratar antes de la liberación |
 | O-09 | LOW | Sin correo: avisos y restablecimiento dependen de la aplicación y del administrador | SMTP configurable |
 | O-10 | LOW | `postcss` forzado por `overrides` dentro de Next 15 | Eliminar al migrar a Next 16 |

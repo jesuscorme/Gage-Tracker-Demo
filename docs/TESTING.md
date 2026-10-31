@@ -17,8 +17,8 @@ Las pruebas E2E en navegador (Playwright con Edge) se ejecutaron contra una base
 
 | Tipo | Alcance | Resultado |
 |---|---|---|
-| Backend: unitarias, integración y API (PostgreSQL real) | 234 pruebas en 22 archivos | **234/234** |
-| Validación estadística del motor | 48 casos: datasets publicados, implementaciones independientes, límites, diseños inválidos | **48/48** (incluidas en las 234) |
+| Backend: unitarias, integración y API (PostgreSQL real) | 250 pruebas en 23 archivos | **250/250** |
+| Validación estadística del motor | 48 casos: datasets publicados, implementaciones independientes, límites, diseños inválidos | **48/48** (incluidas en las 250) |
 | Regresión estadística (*golden*) y PDF por método | Salida completa de los 8 métodos congelada; PDF de los 8 métodos en ES y EN | **8/8 + 16/16** (incluidas) |
 | Migraciones | Subida completa, bajada completa y nueva subida en cada corrida; `alembic check` | OK, sin diferencias |
 | Lint backend | ruff: errores de sintaxis y pyflakes | Sin hallazgos |
@@ -51,6 +51,7 @@ Pruebas por archivo:
 | integrations | 8 |
 | laboratory | 7 |
 | msa | 8 |
+| msa_guidance | 16 |
 | oot | 5 |
 | platform | 13 |
 | rbac | 18 |

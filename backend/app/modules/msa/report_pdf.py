@@ -18,8 +18,8 @@ METHOD_NAMES = {
 }
 
 
-ES = {'MSA Study Report': 'Reporte de estudio MSA', 'run': 'cálculo', 'issued': 'emitido', 'page': 'página', 'Statistical results': 'Resultados estadísticos', 'Model': 'Modelo', 'Source': 'Fuente', 'StdDev': 'Desv. est.', 'Variance': 'Varianza', 'Study var': 'Var. estudio', '%Contribution': '%Contribución', '%Study var': '%Var. estudio', '%Tolerance': '%Tolerancia', 'Study variation multiplier': 'Multiplicador de variación de estudio', 'Components of variation (%Study variation)': 'Componentes de variación (%Var. estudio)', 'Range chart by operator': 'Carta de rangos por operador', 'Average chart by operator': 'Carta de promedios por operador', 'Appraiser': 'Evaluador', 'Within %': 'Dentro %', 'vs reference %': 'vs referencia %', 'kappa vs ref': 'kappa vs ref.', 'Effectiveness %': 'Efectividad %', 'Miss %': 'Omisión %', 'False alarm %': 'Falsa alarma %', 'Between appraisers': 'Entre evaluadores', 'All vs reference': 'Todos vs referencia', 'Within-appraiser agreement (%)': 'Acuerdo dentro del evaluador (%)', '95% CI of bias': 'IC 95 % del sesgo', 'CI of bias': 'IC del sesgo', 'Histogram of readings': 'Histograma de lecturas', 'Readings vs reference': 'Lecturas vs referencia', 'Run chart (reference +/- K/2 % of tolerance)': 'Gráfica de corrida (referencia +/- K/2 % de la tolerancia)', 'Part': 'Pieza', 'Reference': 'Referencia', 'Average bias': 'Sesgo promedio', 'Bias vs reference (points), fit and confidence bands': 'Sesgo vs referencia (puntos), ajuste y bandas de confianza', 'Fitted line and confidence bands by reference value': 'Recta ajustada y bandas de confianza por valor de referencia', 'Subgroup': 'Subgrupo', 'Criterion (AIAG SPC Table II.1)': 'Criterio (Tabla II.1 manual SPC AIAG)', 'Note': 'Nota', 'Study': 'Estudio', 'Title': 'Título', 'Characteristic': 'Característica', 'Part number / revision': 'Número de parte / revisión', 'Customer': 'Cliente', 'Plant / department': 'Planta / departamento', 'Gage': 'Instrumento', 'status at calculation': 'estado al calcular', 'next due': 'vence', 'Responsible': 'Responsable', 'Dates': 'Fechas', 'start': 'inicio', 'end': 'fin', 'Operators / appraisers': 'Operadores / evaluadores', 'Design and method': 'Diseño y método', 'Method': 'Método', 'Design': 'Diseño', 'Parameters': 'Parámetros', 'defaults': 'predeterminados', 'Observations used': 'Observaciones utilizadas', 'Calculated': 'Calculado', 'by': 'por', 'Acceptance criteria and conclusion': 'Criterios de aceptación y conclusión', 'Criteria': 'Criterios', 'Approved': 'Aprobado', 'Metric': 'Indicador', 'Rule': 'Regla', 'Actual': 'Valor', 'Status': 'Estado', 'Computed decision': 'Decisión calculada', 'Conclusion': 'Conclusión', 'pending review': 'pendiente de revisión', 'Concluded by': 'Concluyó', 'Data': 'Datos', 'NO_CRITERIA_TEXT': 'No se aplicaron criterios de aceptación aprobados: el resultado es solo estadístico y no constituye una decisión de aceptación.', 'DISCLAIMER_TEXT': 'Este reporte documenta un análisis estadístico. La aceptación depende de los criterios aprobados por la organización y de su propia evaluación de los requisitos aplicables.', 'Gage R&R crossed - Average & Range': 'GRR cruzado - Promedio y Rango', 'Gage R&R crossed - ANOVA': 'GRR cruzado - ANOVA', 'Gage R&R nested - ANOVA': 'GRR anidado - ANOVA', 'Attribute Agreement Analysis': 'Análisis de concordancia por atributos', 'Bias study': 'Estudio de sesgo', 'Linearity study': 'Estudio de linealidad', 'Stability study': 'Estudio de estabilidad', 'Type 1 gage study': 'Estudio tipo 1'}
-EN_LONG = {'NO_CRITERIA_TEXT': 'No approved acceptance criteria applied: the result is statistical only and does not constitute an acceptance decision.', 'DISCLAIMER_TEXT': 'This report documents a statistical analysis. Acceptance depends on the criteria approved by the organization and on its own evaluation of applicable requirements.'}
+ES = {'MSA Study Report': 'Reporte de estudio MSA', 'run': 'cálculo', 'issued': 'emitido', 'page': 'página', 'Statistical results': 'Resultados estadísticos', 'Model': 'Modelo', 'Source': 'Fuente', 'StdDev': 'Desv. est.', 'Variance': 'Varianza', 'Study var': 'Var. estudio', '%Contribution': '%Contribución', '%Study var': '%Var. estudio', '%Tolerance': '%Tolerancia', 'Study variation multiplier': 'Multiplicador de variación de estudio', 'Components of variation (%Study variation)': 'Componentes de variación (%Var. estudio)', 'Range chart by operator': 'Carta de rangos por operador', 'Average chart by operator': 'Carta de promedios por operador', 'Appraiser': 'Evaluador', 'Within %': 'Dentro %', 'vs reference %': 'vs referencia %', 'kappa vs ref': 'kappa vs ref.', 'Effectiveness %': 'Efectividad %', 'Miss %': 'Omisión %', 'False alarm %': 'Falsa alarma %', 'Between appraisers': 'Entre evaluadores', 'All vs reference': 'Todos vs referencia', 'Within-appraiser agreement (%)': 'Acuerdo dentro del evaluador (%)', '95% CI of bias': 'IC 95 % del sesgo', 'CI of bias': 'IC del sesgo', 'Histogram of readings': 'Histograma de lecturas', 'Readings vs reference': 'Lecturas vs referencia', 'Run chart (reference +/- K/2 % of tolerance)': 'Gráfica de corrida (referencia +/- K/2 % de la tolerancia)', 'Part': 'Pieza', 'Reference': 'Referencia', 'Average bias': 'Sesgo promedio', 'Bias vs reference (points), fit and confidence bands': 'Sesgo vs referencia (puntos), ajuste y bandas de confianza', 'Fitted line and confidence bands by reference value': 'Recta ajustada y bandas de confianza por valor de referencia', 'Subgroup': 'Subgrupo', 'Criterion (AIAG SPC Table II.1)': 'Criterio (Tabla II.1 manual SPC AIAG)', 'Note': 'Nota', 'Study': 'Estudio', 'Title': 'Título', 'Characteristic': 'Característica', 'Part number / revision': 'Número de parte / revisión', 'Customer': 'Cliente', 'Plant / department': 'Planta / departamento', 'Gage': 'Instrumento', 'status at calculation': 'estado al calcular', 'next due': 'vence', 'Responsible': 'Responsable', 'Dates': 'Fechas', 'start': 'inicio', 'end': 'fin', 'Operators / appraisers': 'Operadores / evaluadores', 'Design and method': 'Diseño y método', 'Method': 'Método', 'Design': 'Diseño', 'Parameters': 'Parámetros', 'defaults': 'predeterminados', 'Observations used': 'Observaciones utilizadas', 'Calculated': 'Calculado', 'by': 'por', 'Acceptance criteria and conclusion': 'Criterios de aceptación y conclusión', 'Interpretation per AIAG MSA': 'Interpretación según AIAG MSA', 'GUIDANCE_NOTE': 'Guía de interpretación (no sustituye a los criterios aprobados).', 'Criteria': 'Criterios', 'Approved': 'Aprobado', 'Metric': 'Indicador', 'Rule': 'Regla', 'Actual': 'Valor', 'Status': 'Estado', 'Computed decision': 'Decisión calculada', 'Conclusion': 'Conclusión', 'pending review': 'pendiente de revisión', 'Concluded by': 'Concluyó', 'Data': 'Datos', 'NO_CRITERIA_TEXT': 'No se aplicaron criterios de aceptación aprobados: el resultado es solo estadístico y no constituye una decisión de aceptación.', 'DISCLAIMER_TEXT': 'Este reporte documenta un análisis estadístico. La aceptación depende de los criterios aprobados por la organización y de su propia evaluación de los requisitos aplicables.', 'Gage R&R crossed - Average & Range': 'GRR cruzado - Promedio y Rango', 'Gage R&R crossed - ANOVA': 'GRR cruzado - ANOVA', 'Gage R&R nested - ANOVA': 'GRR anidado - ANOVA', 'Attribute Agreement Analysis': 'Análisis de concordancia por atributos', 'Bias study': 'Estudio de sesgo', 'Linearity study': 'Estudio de linealidad', 'Stability study': 'Estudio de estabilidad', 'Type 1 gage study': 'Estudio tipo 1'}
+EN_LONG = {'GUIDANCE_NOTE': 'Interpretation guidance (does not replace the approved criteria).', 'NO_CRITERIA_TEXT': 'No approved acceptance criteria applied: the result is statistical only and does not constitute an acceptance decision.', 'DISCLAIMER_TEXT': 'This report documents a statistical analysis. Acceptance depends on the criteria approved by the organization and on its own evaluation of applicable requirements.'}
 
 
 def _t(v) -> str:
@@ -284,6 +284,28 @@ def _results(pdf: _Pdf, snap: dict) -> None:
         pdf.multi_cell(0, 4, _t(f"{pdf.L('Note')}: {w}"), new_x="LMARGIN", new_y="NEXT")
 
 
+GUIDANCE_TAG = {"ok": "OK", "warn": "!", "bad": "X", "info": "i"}
+
+
+def _guidance(pdf: _Pdf, items: list[dict]) -> None:
+    if not items:
+        return
+    pdf.section("Interpretation per AIAG MSA")
+    pdf.set_font("Helvetica", "I", 7.5)
+    pdf.multi_cell(0, 4, _t(pdf.L("GUIDANCE_NOTE")), new_x="LMARGIN", new_y="NEXT")
+    lang = "es" if pdf.lang == "es" else "en"
+    for g in items:
+        text = g[lang].replace("≥", ">=").replace("≤", "<=")
+        pdf.set_font("Helvetica", "B", 8.5)
+        pdf.cell(8, 4.5, GUIDANCE_TAG.get(g["level"], ""))
+        pdf.set_font("Helvetica", "", 8.5)
+        pdf.multi_cell(0, 4.5, _t(text), new_x="LMARGIN", new_y="NEXT")
+        pdf.set_x(pdf.l_margin + 8)
+        pdf.set_font("Helvetica", "I", 7)
+        pdf.multi_cell(0, 3.5, _t(g["ref"][lang]), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+
+
 def render(snap: dict) -> bytes:
     pdf = _Pdf(snap)
     pdf.add_page()
@@ -307,6 +329,7 @@ def render(snap: dict) -> bytes:
             ("Observations used", str(len(snap["input"]["observations"]))),
             ("Calculated", f"{snap['calculated_at']} {pdf.L('by')} {snap['calculated_by']}")])
     _results(pdf, snap)
+    _guidance(pdf, snap.get("guidance") or [])
     pdf.section("Acceptance criteria and conclusion")
     crit = snap.get("criteria")
     if crit:

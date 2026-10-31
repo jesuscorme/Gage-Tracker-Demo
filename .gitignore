@@ -30,3 +30,6 @@ backend/var/
 # Deployment secrets
 deploy/.env
 backend/var/
+
+# Controlled copy of the AIAG MSA manual (copyrighted, kept local)
+/13. Manual MSA 4ta Ed.pdf

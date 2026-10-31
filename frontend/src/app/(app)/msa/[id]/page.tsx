@@ -275,7 +275,7 @@ const pct = (v: number | null | undefined) => (v === null || v === undefined ? "
 const n4 = (v: unknown) => (typeof v === "number" ? (Math.abs(v) >= 1000 ? v.toFixed(1) : v.toPrecision(5)) : v === null || v === undefined ? "—" : String(v));
 
 function RunView({ run }: { run: MsaRun }) {
-  const { t, fmtDateTime } = useI18n();
+  const { t, fmtDateTime, lang } = useI18n();
   const r: MsaResults = run.results;
   const fam = FAMILY[run.method];
   const ch = r.charts;
@@ -355,6 +355,15 @@ function RunView({ run }: { run: MsaRun }) {
           </>
         )}
       </Card>
+      {!!run.guidance?.length && (
+        <Card title={t("msa.guidance")}>
+          <ul className="space-y-3">{run.guidance.map((g, i) => (
+            <li key={i} className="flex gap-2.5">
+              <ToneBadge tone={g.level}>{g.level === "ok" ? "✓" : g.level === "info" ? "i" : "!"}</ToneBadge>
+              <div className="text-[13px]">{g[lang]}<div className="mt-0.5 text-[11px] text-ink-3">{g.ref[lang]}</div></div>
+            </li>))}</ul>
+        </Card>
+      )}
       {!!r.warnings.length && <Alert tone="warn"><b>{t("msa.warnings")}</b><ul className="list-disc pl-5">{r.warnings.map((w) => <li key={w}>{w}</li>)}</ul></Alert>}
     </div>
   );

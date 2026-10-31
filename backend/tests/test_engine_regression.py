@@ -78,6 +78,7 @@ if __name__ == "__main__" and "--update" in sys.argv:
 @pytest.mark.parametrize("lang", ["es", "en"])
 def test_msa_pdf_report_renders_for_every_method(method, lang):
     """The study report (tables + charts) renders for every methodology and language."""
+    from app.modules.msa.guidance import guidance
     from app.modules.msa.report_pdf import render
 
     data = cases()[method]
@@ -91,6 +92,6 @@ def test_msa_pdf_report_renders_for_every_method(method, lang):
             "validation_status": result["validation_status"], "input_hash": engine.input_hash(data), "input": data,
             "results": result, "criteria": None, "evaluation": None, "decision": "NO_CRITERIA",
             "final_decision": None, "final_comment": None, "concluded_by": None, "calculated_by": "R",
-            "calculated_at": "2026-10-30T10:00:00", "lang": lang}
+            "calculated_at": "2026-10-30T10:00:00", "lang": lang, "guidance": guidance(method, result)}
     pdf = render(snap)
     assert pdf.startswith(b"%PDF") and len(pdf) > 3000
