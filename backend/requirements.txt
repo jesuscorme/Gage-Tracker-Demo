@@ -18,3 +18,4 @@ fpdf2==2.9.0
 numpy==2.3.3
 scipy==1.16.2
 cryptography==50.0.2
+httpx==0.28.1
